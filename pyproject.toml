@@ -1,0 +1,30 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools"]
+
+
+[project]
+authors  = [
+    {name = "Will Fatherley", email = "wfatherley@proton.me"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3.14",
+    "Natural Language :: English",
+    "Topic :: Scientific/Engineering",
+    "Typing :: Typed"
+]
+description = "A database-oriented library for handling graphs"
+license = "MIT"
+maintainers = [
+    {name = "Will Fatherley", email = "wfatherley@proton.me"}
+]
+name = "giraffe"
+readme = "README.md"
+requires-python = ">=3.13"
+version = "2026.0a"
+
+
+[project.urls]
+repository = "https://github.com/wfatherley/giraffe.git"
