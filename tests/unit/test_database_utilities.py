@@ -11,7 +11,7 @@ from . import FreshModelTestCase
 class TestClose(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("close", dir(giraffe.Database))
 
@@ -44,7 +44,7 @@ class TestClose(FreshModelTestCase):
 class TestCheckMode(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("check_mode", dir(giraffe.Database))
 
@@ -109,7 +109,7 @@ class TestCheckMode(FreshModelTestCase):
 class TestCreateGraph(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("create_graph", dir(giraffe.Database))
 
@@ -200,7 +200,7 @@ class TestCreateGraph(FreshModelTestCase):
 class TestAlterGraph(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("alter_graph", dir(giraffe.Database))
 
@@ -288,7 +288,7 @@ class TestAlterGraph(FreshModelTestCase):
 class TestDeleteGraphs(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("delete_graphs", dir(giraffe.Database))
 
@@ -324,7 +324,7 @@ class TestDeleteGraphs(FreshModelTestCase):
 class TestAddVertices(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("add_vertices", dir(giraffe.Database))
 
@@ -430,7 +430,7 @@ class TestAddVertices(FreshModelTestCase):
 class TestAlterVertex(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("alter_vertex", dir(giraffe.Database))
 
@@ -510,7 +510,7 @@ class TestAlterVertex(FreshModelTestCase):
 class TestDeleteVertices(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("delete_vertices", dir(giraffe.Database))
 
@@ -547,7 +547,7 @@ class TestDeleteVertices(FreshModelTestCase):
 class TestAddEdges(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("add_edges", dir(giraffe.Database))
 
@@ -624,6 +624,8 @@ class TestAddEdges(FreshModelTestCase):
                     None,
                     None,
                     None,
+                    None,
+                    0,
                 ),
                 (
                     1,
@@ -641,6 +643,8 @@ class TestAddEdges(FreshModelTestCase):
                     None,
                     None,
                     None,
+                    None,
+                    0,
                 ),
             ],
         )
@@ -656,7 +660,7 @@ class TestAddEdges(FreshModelTestCase):
 class TestAlterEdge(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("alter_edge", dir(giraffe.Database))
 
@@ -738,7 +742,7 @@ class TestAlterEdge(FreshModelTestCase):
 class TestDeleteEdges(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("delete_edges", dir(giraffe.Database))
 

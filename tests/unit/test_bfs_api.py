@@ -7,22 +7,22 @@ import giraffe
 from . import FreshModelTestCase
 
 
-class TestBFSearch(FreshModelTestCase):
+class TestEBFSearch(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
-        self.assertIn("bf_search", dir(giraffe.Database))
+        self.assertIn("ebf_search", dir(giraffe.Database))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.bf_search))
+        self.assertTrue(callable(giraffe.Database.ebf_search))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.bf_search)
+        s = inspect.signature(giraffe.Database.ebf_search)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -52,14 +52,14 @@ class TestBFSearch(FreshModelTestCase):
                 db.cursor.execute("UPDATE graph SET mode = ?", (flags,))
                 db.connection.commit()
                 with self.assertRaises(Exception):
-                    db.bf_search("x")
+                    db.ebf_search("x")
 
     def test_raise_with_bad_start_vertex(self):
         """"""
         db = giraffe.Database(self.con)
         db.create_graph("test", 1)
         with self.assertRaises(Exception):
-            db.bf_search("test", 2)
+            db.ebf_search("test", 2)
 
     def test_handle_cormen_etal_example(self):
         """"""
@@ -80,7 +80,7 @@ class TestBFSearch(FreshModelTestCase):
             {"parent_vertex_id": _[5], "child_vertex_id": _[6]},
             {"parent_vertex_id": _[6], "child_vertex_id": _[7]},
         )
-        db.bf_search("test", 1)
+        db.ebf_search("test", 1)
         self.assertEqual(
             db.cursor.execute(
                 "SELECT id, predecessor FROM edge"
@@ -122,7 +122,7 @@ class TestBFSearch(FreshModelTestCase):
             {"parent_vertex_id": _[3], "child_vertex_id": _[9]},
             {"parent_vertex_id": _[4], "child_vertex_id": _[5]},
         )
-        db.bf_search("test", 0)
+        db.ebf_search("test", 0)
         self.assertEqual(
             db.cursor.execute(
                 "SELECT id, predecessor FROM edge"
@@ -150,7 +150,7 @@ class TestBFSearch(FreshModelTestCase):
         """"""
         db = giraffe.Database(self.con)
         db.create_peterson("test")
-        db.bf_search("test", 0)
+        db.ebf_search("test", 0)
         self.assertEqual(
             db.cursor.execute(
                 "SELECT id, predecessor FROM edge"
@@ -178,7 +178,7 @@ class TestBFSearch(FreshModelTestCase):
         """"""
         db = giraffe.Database(self.con)
         db.create_frucht("test")
-        db.bf_search("test", 0)
+        db.ebf_search("test", 0)
         self.assertEqual(
             db.cursor.execute(
                 "SELECT id, predecessor FROM edge"
@@ -206,10 +206,206 @@ class TestBFSearch(FreshModelTestCase):
         )
 
 
+class TestVBFSearch(FreshModelTestCase):
+    """"""
+
+    def test_is_in_giraffe(self):
+        """"""
+        self.assertIn("vbf_search", dir(giraffe.Database))
+
+    def test_is_callable(self):
+        """"""
+        self.assertTrue(callable(giraffe.Database.vbf_search))
+
+    def test_signature_unchanged(self):
+        """"""
+
+        # fetch signature
+        s = inspect.signature(giraffe.Database.vbf_search)
+
+        # verify parameters are unchanged
+        self.assertEqual(len(s.parameters), 4)
+
+        fles = s.parameters["self"]
+        self.assertEqual(fles.default, fles.empty)
+        self.assertEqual(fles.kind, fles.POSITIONAL_OR_KEYWORD)
+
+        graph = s.parameters["graph"]
+        self.assertEqual(graph.default, graph.empty)
+        self.assertEqual(graph.kind, graph.POSITIONAL_OR_KEYWORD)
+
+        start_vertex_id = s.parameters["start_vertex_id"]
+        self.assertEqual(start_vertex_id.default, start_vertex_id.empty)
+        self.assertEqual(start_vertex_id.kind, start_vertex_id.POSITIONAL_OR_KEYWORD)
+
+        hooks = s.parameters["hooks"]
+        self.assertEqual(hooks.default, hooks.empty)
+        self.assertEqual(hooks.kind, hooks.VAR_KEYWORD)
+
+    def test_raise_on_immutable_graph(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_graph("test", 1)
+
+        for i in range(1, 5):
+            for c in itertools.combinations(
+                [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
+            ):
+                flags = functools.reduce(lambda x, y: x | y, c)
+                db.cursor.execute("UPDATE graph SET mode = ?", (flags,))
+                db.connection.commit()
+                with self.assertRaises(Exception):
+                    db.vbf_search("x")
+
+    def test_raise_with_bad_start_vertex(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_graph("test", 1)
+        with self.assertRaises(Exception):
+            db.vbf_search("test", 2)
+
+    def test_handle_cormen_etal_example(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_graph("test", 1, 0)
+        _ = db.add_vertices("test", *[{} for _ in range(8)])
+        _ = db.add_edges(
+            "test",
+            {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[4]},
+            {"parent_vertex_id": _[1], "child_vertex_id": _[5]},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[3]},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[5]},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[6]},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[6]},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[7]},
+            {"parent_vertex_id": _[5], "child_vertex_id": _[6]},
+            {"parent_vertex_id": _[6], "child_vertex_id": _[7]},
+        )
+        db.vbf_search("test", 1)
+        self.assertEqual(
+            db.cursor.execute(
+                """
+                SELECT id, color, predecessor, bf_distance
+                FROM vertex
+                """
+            ).fetchall(),
+            [
+                (0, 2, 1, 1),
+                (1, 2, None, 0),
+                (2, 2, 5, 2),
+                (3, 2, 2, 3),
+                (4, 2, 0, 2),
+                (5, 2, 1, 1),
+                (6, 2, 5, 2),
+                (7, 2, 6, 3),
+            ],
+        )
+
+    def test_handle_weird_peterson(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_graph("test", 1, 0)
+        _ = db.add_vertices("test", *[{} for _ in range(10)])
+        _ = db.add_edges(
+            "test",
+            {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
+            {"parent_vertex_id": _[1], "child_vertex_id": _[2]},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[3]},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[4]},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[0]},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[5]},
+            {"parent_vertex_id": _[1], "child_vertex_id": _[6]},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[7]},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[8]},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[9]},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[6]},
+            {"parent_vertex_id": _[1], "child_vertex_id": _[7]},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[8]},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[9]},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[5]},
+        )
+        db.vbf_search("test", 0)
+        self.assertEqual(
+            db.cursor.execute(
+                """
+                SELECT id, color, predecessor, bf_distance
+                FROM vertex
+                """
+            ).fetchall(),
+            [
+                (0, 2, None, 0),
+                (1, 2, 0, 1),
+                (2, 2, 1, 2),
+                (3, 2, 4, 2),
+                (4, 2, 0, 1),
+                (5, 2, 0, 1),
+                (6, 2, 0, 1),
+                (7, 2, 1, 2),
+                (8, 2, 2, 3),
+                (9, 2, 4, 2),
+            ],
+        )
+
+    def test_handle_peterson(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_peterson("test")
+        db.vbf_search("test", 0)
+        self.assertEqual(
+            db.cursor.execute(
+                """
+                SELECT id, color, predecessor, bf_distance
+                FROM vertex
+                """
+            ).fetchall(),
+            [
+                (0, 2, None, 0),
+                (1, 2, 0, 1),
+                (2, 2, 1, 2),
+                (3, 2, 4, 2),
+                (4, 2, 0, 1),
+                (5, 2, 0, 1),
+                (6, 2, 1, 2),
+                (7, 2, 2, 3),
+                (8, 2, 3, 3),
+                (9, 2, 4, 2),
+            ],
+        )
+
+    def test_handle_frucht(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_frucht("test")
+        db.vbf_search("test", 0)
+        self.assertEqual(
+            db.cursor.execute(
+                """
+                SELECT id, color, predecessor, bf_distance
+                FROM vertex
+                """
+            ).fetchall(),
+            [
+                (0, 2, None, 0),
+                (1, 2, 0, 1),
+                (2, 2, 1, 2),
+                (3, 2, 0, 1),
+                (4, 2, 3, 2),
+                (5, 2, 1, 2),
+                (6, 2, 4, 3),
+                (7, 2, 5, 3),
+                (8, 2, 11, 3),
+                (9, 2, 10, 2),
+                (10, 2, 0, 1),
+                (11, 2, 10, 2),
+            ],
+        )
+
+
 class TestMinimumSpanningTree(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("minimum_spanning_tree", dir(giraffe.Database))
 
@@ -370,7 +566,7 @@ class TestMinimumSpanningTree(FreshModelTestCase):
 class TestSingleSourceShortestPath(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("single_source_shortest_path", dir(giraffe.Database))
 

@@ -14,7 +14,7 @@ class TestModel(unittest.TestCase):
     def test_executes_with_sqlite3(self):
         """"""
         con = sqlite3.connect(":memory:", autocommit=False)
-        for relation in giraffe.Database._sql[0].split(";"):
+        for relation in giraffe.Database.sql[0].split(";"):
             con.execute(relation)
         con.commit()
         con.close()
@@ -23,7 +23,7 @@ class TestModel(unittest.TestCase):
 class TestColor(unittest.TestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("Color", dir(giraffe))
 
@@ -43,7 +43,7 @@ class TestColor(unittest.TestCase):
 class TestEdgeODictFactory(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("edge_odict_factory", dir(giraffe))
 
@@ -64,7 +64,7 @@ class TestEdgeODictFactory(FreshModelTestCase):
 class TestVertexODictFactory(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("vertex_odict_factory", dir(giraffe))
 

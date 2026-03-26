@@ -1,7 +1,18 @@
 """A database-oriented library for handling graphs.
 
-Provide an interface for creating and manipulating graphs whose
-storage medium is an SQL-based relational database.
+Giraffe provides tools to create and manipulate graphs that reside in
+a relational database. Given a PEP-249 connection,
+:class:`giraffe.Database` can create this simple graph model:
+
+.. raw:: html
+
+   <object data="mermaid/model.svg" type="image/svg+xml"></object>
+
+
+This model supports multiple storing graphs, and Giraffe provides
+common CRUD-like functions to manage them. Several common analytical
+methods are available, such as 
+:method:`giraffe.Database.topological_sort`.
 """
 
 import json
@@ -11,10 +22,18 @@ import sys
 
 from collections import OrderedDict
 from enum import IntEnum
+from itertools import groupby
 
 
-def vertex_odict_factory() -> dict:
-    """"""
+def vertex_odict_factory() -> OrderedDict:
+    """Return ordered mapping of vertex columns and their defaults.
+    
+    An instance of ``collections.OrderedDict`` is returned, with keys
+    corresponding to the attributes (columns) of the vertex object
+    (table). The values are the defaults specified in the vertex DDL.
+
+    :return collections.OrderedDict:
+    """
     return OrderedDict(
         **{
             "id": None,
@@ -37,8 +56,14 @@ def vertex_odict_factory() -> dict:
     )
 
 
-def edge_odict_factory() -> dict:
-    """"""
+def edge_odict_factory() -> OrderedDict:
+    """Return ordered mapping of edge columns and their defaults.
+    
+    An instance of ``collections.OrderedDict`` is returned, with keys
+    corresponding to the attributes (columns) of the edge object
+    (table). The values are the defaults specified in the edge DDL.
+
+    :return collections.OrderedDict:"""
     return OrderedDict(
         **{
             "id": None,
@@ -56,6 +81,8 @@ def edge_odict_factory() -> dict:
             "metadata": None,
             "weight": None,
             "aux_id": None,
+            "mf_capacity": None,
+            "mf_flow": 0,
         }
     )
 
@@ -68,7 +95,7 @@ CEIM = 16  # cycle edges
 
 
 class Color(IntEnum):
-    """search colors"""
+    """Color-to-integer enumeration for anayltical algorithms."""
 
     white = 0
     gray = 1
@@ -76,9 +103,44 @@ class Color(IntEnum):
 
 
 class Database:
-    """"""
+    """Composition of one database connection and graph methods.
 
-    _sql = [
+    This is the primary interface for users of Giraffe. Customized with
+    a PEP-249 compliant database connection, it provides methods to
+    create and manipulate graphs that reside in the database. The graph
+    model is defined by the DDL in attribute ``Database.model``. The
+    methods of this class execute SQL statements that interact with
+    this model, allowing users to perform various operations on the
+    graphs, vertices, edges, and cycles stored in the database. 
+    
+    All methods call the connection's commit method after completing.
+    Instances have the following attributes:
+
+    .. py:attribute:: connection
+
+        The PEP-249 compliant database connection passed in at
+        customization time.
+
+    .. py:attribute:: cursor
+
+        A cursor instance created by calling
+        ``Database.connection.cursor``.
+
+    .. py:attribute:: model
+
+        The working DDL under which graphs are created and manipulated.
+
+    .. py:attribute:: sql
+
+        The SQL queries used to perform the various routines (depth
+        first search, etc.) are stored in this attribute
+        ``Database.sql``. Before instantiation, the query parameters
+        are written with Python's formatting minilangauge. After
+        intstantiation, the query parameters are written in accord with
+        the connection's ``paramstyle`` attribute.
+    """
+
+    sql = [
         """
         CREATE TABLE graph(
 
@@ -142,6 +204,8 @@ class Database:
             metadata TEXT,
             weight NUMERIC,
             aux_id TEXT,
+            mf_capacity NUMERIC,
+            mf_flow NUMERIC DEFAULT 0,
 
             FOREIGN KEY (graph_id) REFERENCES graph(id)
                 ON DELETE CASCADE
@@ -286,7 +350,9 @@ class Database:
             component_graph_bridge,
             metadata,
             weight,
-            aux_id
+            aux_id,
+            mf_capacity,
+            mf_flow
         )
         VALUES (
             {id!i:1},
@@ -303,7 +369,10 @@ class Database:
             {component_graph_bridge!i:12},
             {metadata!s:13},
             {weight!f:14},
-            {aux_id!s:15})
+            {aux_id!s:15},
+            {mf_capacity!f:16},
+            {mf_flow!f:17}
+        )
         RETURNING id
         """,  # 12
         "SELECT * FROM edge WHERE id = {id!i:1}",  # 13
@@ -324,7 +393,10 @@ class Database:
             component_graph_bridge = {component_graph_bridge!i:11},
             metadata = {metadata!s:12},
             weight = {weight!f:13},
-            aux_id = {aux_id!s:14}
+            aux_id = {aux_id!s:14},
+            mf_capacity = {mf_capacity!f:15},
+            mf_flow = {mf_flow!f:16}
+
         WHERE
             id = {id!i:15}
         """,  # 14
@@ -905,10 +977,14 @@ class Database:
         """,  # 86
     ]
 
-    model = _sql[0]
+    model = sql[0]
 
     def __init__(self, connection: object) -> None:
-        """"""
+        """
+        :param connection: a PEP-249 compliant database connection
+
+        :return None:
+        """
 
         # bind connection and cursor
         self.connection = connection
@@ -917,7 +993,7 @@ class Database:
         # format sql according to connection's paramstyle
         formatter = string.Formatter()
         param_style = sys.modules[connection.__module__].paramstyle
-        for i, statement in enumerate(self._sql):
+        for i, statement in enumerate(self.sql):
             statement_fragments = []
             for tup in formatter.parse(statement):
                 statement_fragments.append(tup[0])
@@ -937,35 +1013,53 @@ class Database:
                     raise Exception(
                         f"bad paramstyle for {connection.__module__.__name__}"
                     )
-            self._sql[i] = "".join(statement_fragments)
-        self._sql = tuple(self._sql)
+            self.sql[i] = "".join(statement_fragments)
+        self.sql = tuple(self.sql)
 
     def close(self: object) -> None:
-        """"""
+        """Close cursor then connection, then return.
+        
+        :return None:
+        """
         self.cursor.close()
         self.connection.close()
 
     def load_schema(self: object) -> None:
-        """"""
+        """Execute the model and commit.
+        
+        :return None:"""
 
         # execute all statements in model
-        for table_definition in self._sql[0].split(";"):
+        for table_definition in self.sql[0].split(";"):
             _ = self.cursor.execute(table_definition.strip())
         self.connection.commit()
 
     def get_ordered_dict_record(
         self: object, dql: str, params: object
     ) -> OrderedDict:
-        """"""
+        """Fetch one record and return it as an ordered dictionary.
+        
+        :param dql: a select-statement that returns one record
+        :param params: parameters to interpolate into ``dql``
+        
+        :return collections.OrderedDict:
+        """
         cursor = self.cursor.execute(dql, params)
         columns = tuple(col[0] for col in cursor.description)
         return OrderedDict((item for item in zip(columns, cursor.fetchone())))
 
     def check_mode(self: object, graph: str, *flags: list) -> bool:
-        """"""
+        """Determine if any of the given "mutability mode" flags are
+        set for the graph.
+        
+        :param graph: name of the graph to check
+        :param flags: zero or more mode flags to check
+        
+        :return bool:
+        """
 
         # fetch the mode of graph
-        mode = self.cursor.execute(self._sql[1], (graph,)).fetchone()
+        mode = self.cursor.execute(self.sql[1], (graph,)).fetchone()
 
         # raise if bad mode
         if mode is None or not isinstance(mode[0], int):
@@ -984,7 +1078,16 @@ class Database:
         mode: int = 0,
         **metadata,
     ) -> None:
-        """"""
+        """Create a graph. Optional keyword arguments are serialized as a JSON object and stored as metadata for the graph.
+
+        :param name: name of the graph to create
+        :param directed: whether the graph is directed (1) or undirected (0)
+        :param acyclic: whether the graph is acyclic (1) or not (0)
+        :param mode: mutability mode flags to set for the graph
+        :param metadata: any additional metadata to associate with the graph
+        
+        :return None:
+        """
 
         # possibly serialize metadata params as a json object
         if metadata:
@@ -994,19 +1097,24 @@ class Database:
 
         # create the graph
         self.cursor.execute(
-            self._sql[2], (name, directed, acyclic, metadata, mode)
+            self.sql[2], (name, directed, acyclic, metadata, mode)
         )
         self.connection.commit()
 
     def alter_graph(self: object, name: str, **attributes) -> None:
-        """"""
+        """Update attributes of a graph with any keyword arguments. Raise ``Exception`` if any keyword is not a valid graph attribute or if no attributes are provided.
+        
+        :param name: name of the graph to update
+        :param attributes: graph attributes to update with
+        
+        :return None:"""
 
         # raise if called with nothing to alter with
         if not attributes:
             raise Exception(f"no attributes provided to update '{name}'")
 
         # fetch current record and update it
-        record = self.get_ordered_dict_record(self._sql[3], (name,))
+        record = self.get_ordered_dict_record(self.sql[3], (name,))
         for attribute in attributes:
             if attribute in record:
                 record[attribute] = attributes[attribute]
@@ -1018,20 +1126,31 @@ class Database:
             record["metadata"] = json.dumps(record["metadata"])
 
         # udpate
-        self.cursor.execute(self._sql[4], tuple(record.values()))
+        self.cursor.execute(self.sql[4], tuple(record.values()))
         self.connection.commit()
 
     def delete_graphs(self: object, *names: list[str]) -> None:
-        """"""
-        self.cursor.executemany(self._sql[5], ((n,) for n in names))
+        """Delete graphs with the given names.
+        
+        :param names: names of the graphs to delete
+        
+        :return None:
+        """
+        self.cursor.executemany(self.sql[5], ((n,) for n in names))
         self.connection.commit()
 
     def add_vertices(
         self: object, graph: str, *vertices: list[dict]
     ) -> list[int]:
-        """"""
+        """Add vertices to graph ``graph``. If a vertex has a "metadata" key, assume the corresponding value is a dictionary and dump it as a JSON object using ``json.dumps``. Raise ``Exception`` if a vertex has keys that are not valid vertex attributes. Return a list of ids for the created vertices.
+        
+        :param graph: name of the graph to add vertices to
+        :param vertices: one or more dictionaries containing vertex attributes
+        
+        :return list[int]:
+        """
 
-        next_id = self.cursor.execute(self._sql[6]).fetchone()[0]
+        next_id = self.cursor.execute(self.sql[6]).fetchone()[0]
 
         # format vertex dicts
         new_ids = []
@@ -1063,7 +1182,7 @@ class Database:
             # add the vertex
             new_ids.append(
                 self.cursor.execute(
-                    self._sql[7], tuple(vertex_template.values())
+                    self.sql[7], tuple(vertex_template.values())
                 ).fetchone()[0]
             )
         self.connection.commit()
@@ -1072,7 +1191,13 @@ class Database:
         return new_ids
 
     def alter_vertex(self: object, vertex_id: str, **attributes) -> None:
-        """"""
+        """Update attributes of a vertex with any keyword arguments. Raise ``Exception`` if any keyword is not a valid vertex attribute or if no attributes are provided. Assume a "metadata" keyword argument is a dictionary and dump it as a JSON object using ``json.dumps``.
+        
+        :param vertex_id: id of the vertex to update
+        :param attributes: vertex attributes to update with
+        
+        :return None:
+        """
 
         # raise if called with nothing to alter with
         if not attributes:
@@ -1081,7 +1206,7 @@ class Database:
             )
 
         # fetch current record and update it
-        record = self.get_ordered_dict_record(self._sql[8], (vertex_id,))
+        record = self.get_ordered_dict_record(self.sql[8], (vertex_id,))
         for attribute in attributes:
             if attribute in record:
                 record[attribute] = attributes[attribute]
@@ -1097,19 +1222,28 @@ class Database:
 
         # udpate
         self.cursor.execute(
-            self._sql[9], (*record.values(), where_param)
+            self.sql[9], (*record.values(), where_param)
         )
         self.connection.commit()
 
     def delete_vertices(self: object, *ids: list[str]) -> None:
-        """"""
-        self.cursor.executemany(self._sql[10], ((i,) for i in ids))
+        """Delete vertices with the given ids.
+        
+        :param ids: ids of the vertices to delete
+        
+        :return None:"""
+        self.cursor.executemany(self.sql[10], ((i,) for i in ids))
         self.connection.commit()
 
     def add_edges(self: object, graph: str, *edges: list[dict]) -> list[int]:
-        """"""
+        """Add edges to graph ``graph``. If an edge has a "metadata" key, assume the corresponding value is a dictionary and dump it as a JSON object using ``json.dumps``. Raise ``Exception`` if an edge has keys that are not valid edge attributes. Return a list of ids for the created edges.
+        
+        :param graph: name of the graph to add edges to
+        :param edges: one or more dictionaries containing edge attributes
+        
+        :return list[int]:"""
 
-        next_id = self.cursor.execute(self._sql[11]).fetchone()[0]
+        next_id = self.cursor.execute(self.sql[11]).fetchone()[0]
 
         # format vertex dicts
         new_ids = []
@@ -1141,7 +1275,7 @@ class Database:
             # add the vertex
             new_ids.append(
                 self.cursor.execute(
-                    self._sql[12], tuple(edge_template.values())
+                    self.sql[12], tuple(edge_template.values())
                 ).fetchone()[0]
             )
         self.connection.commit()
@@ -1150,7 +1284,13 @@ class Database:
         return new_ids
 
     def alter_edge(self: object, edge_id: str, **attributes) -> None:
-        """"""
+        """Update attributes of an edge with any keyword arguments. Raise ``Exception`` if any keyword is not a valid edge attribute or if no attributes are provided. Assume a "metadata" keyword argument is a dictionary and dump it as a JSON object using ``json.dumps``.
+        
+        :param edge_id: id of the edge to update
+        :param attributes: edge attributes to update with
+        
+        :return None:
+        """
 
         # raise if called with nothing to alter with
         if not attributes:
@@ -1159,7 +1299,7 @@ class Database:
             )
 
         # fetch current record and update it
-        record = self.get_ordered_dict_record(self._sql[13], (edge_id,))
+        record = self.get_ordered_dict_record(self.sql[13], (edge_id,))
         for attribute in attributes:
             if attribute in record:
                 record[attribute] = attributes[attribute]
@@ -1174,15 +1314,23 @@ class Database:
         where_param = record.pop("id")
 
         # udpate
-        self.cursor.execute(self._sql[14], (*record.values(), where_param))
+        self.cursor.execute(self.sql[14], (*record.values(), where_param))
         self.connection.commit()
 
     def delete_edges(self: object, *ids: list[str]) -> None:
-        """"""
-        self.cursor.executemany(self._sql[15], ((i,) for i in ids))
+        """Delete edges with the given ids.
+        
+        :param ids: ids of the edges to delete
+        
+        :return None:"""
+        self.cursor.executemany(self.sql[15], ((i,) for i in ids))
 
     def create_frucht(self: object, name: str) -> None:
-        """"""
+        """Create a directed graph with Frucht vertex-edge structure.
+        
+        :param name: name of the graph to create
+        
+        :return None:"""
         self.create_graph(name, 1)
         _ = self.add_vertices(name, *[{"metadata": {}} for _ in range(12)])
         _ = self.add_edges(
@@ -1208,7 +1356,11 @@ class Database:
         )
 
     def create_peterson(self: object, name: str) -> None:
-        """"""
+        """Create a directed graph with Peterson vertex-edge structure.
+        
+        :param name: name of the graph to create
+        
+        :return None:"""
         self.create_graph(name, 1, 0)
         _ = self.add_vertices(name, *[{"metadata": {}} for _ in range(10)])
         _ = self.add_edges(
@@ -1236,7 +1388,14 @@ class Database:
         transposed_name: str = None,
         chunk_size: int = 250,
     ) -> str:
-        """"""
+        """Reverse the direction of all edges in a directed graph. Raise ``Exception`` if the graph's edges are immutable.
+        
+        :param graph: name of the graph to transpose
+        :param transposed_name: name of the transposed graph to create (default is ``graph + "_transpose"``)
+        :param chunk_size: number of edges to process at a time
+
+        :return str: the name of the transposed graph
+        """
 
         # check for immutability flags set
         if self.check_mode(graph, EDIM):
@@ -1248,12 +1407,12 @@ class Database:
 
         # create a graph record for transposed
         self.cursor.execute(
-            self._sql[16],
+            self.sql[16],
             (transposed_name, graph, graph, json.dumps({"graph": graph}))
         )
 
         # clone vertices with chunked pattern
-        push_cursor = self.connection.execute(self._sql[17], (graph,))
+        push_cursor = self.connection.execute(self.sql[17], (graph,))
         while chunk := push_cursor.fetchmany(size=chunk_size):
 
             # store G's vertex id in metadata
@@ -1266,7 +1425,7 @@ class Database:
             )
 
         # clone edges with chunked pattern
-        push_cursor = push_cursor.execute(self._sql[18], (graph,))
+        push_cursor = push_cursor.execute(self.sql[18], (graph,))
         while chunk := push_cursor.fetchmany(size=chunk_size):
 
             # swaps child/parent vertex ids
@@ -1284,7 +1443,7 @@ class Database:
             )
 
             self.cursor.executemany(
-                self._sql[19], zip(transpose_edge_ids, (e[0] for e in chunk))
+                self.sql[19], zip(transpose_edge_ids, (e[0] for e in chunk))
             )
 
         # clean up
@@ -1306,10 +1465,10 @@ class Database:
 
         # initialization
         current_time = 0
-        self.cursor.execute(self._sql[20], (graph,))
+        self.cursor.execute(self.sql[20], (graph,))
 
         # edge ids can be used as a tree ids
-        trees_cursor = self.connection.execute(self._sql[21], (graph,))
+        trees_cursor = self.connection.execute(self.sql[21], (graph,))
         while (tree := trees_cursor.fetchone()) is not None:
             tree = tree[0]
 
@@ -1318,7 +1477,7 @@ class Database:
                 None, None, self.cursor
             )
             edge = self.cursor.execute(
-                self._sql[22], (current_time, tree, graph, tree)
+                self.sql[22], (current_time, tree, graph, tree)
             ).fetchone()
 
             # edge with id 'tree' was not white
@@ -1327,12 +1486,12 @@ class Database:
 
             # fetch edges growing off current edge
             branch_tips = self.cursor.execute(
-                self._sql[23], (graph, edge[1])
+                self.sql[23], (graph, edge[1])
             ).fetchall()
 
             # compute stack height to use below as break condition
             tree_size = self.cursor.execute(
-                self._sql[24], (graph, tree)
+                self.sql[24], (graph, tree)
             ).fetchone()[0]
 
             # new tree created, trigger hook
@@ -1367,12 +1526,12 @@ class Database:
                         edge, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql[25], (current_time, tree, edge[0])
+                        self.sql[25], (current_time, tree, edge[0])
                     )
 
                     # fetch edges growing off current edge
                     branch_tips = self.cursor.execute(
-                        self._sql[26], (graph, edge[1])
+                        self.sql[26], (graph, edge[1])
                     ).fetchall()
                     hooks.get("after_push", lambda x, y, z: None)(
                         edge, branch_tips, self.cursor
@@ -1391,7 +1550,7 @@ class Database:
                         edge, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql[27], (current_time, edge[0])
+                        self.sql[27], (current_time, edge[0])
                     )
                     current_time += 1
                     tree_size -= 1
@@ -1402,12 +1561,12 @@ class Database:
 
                     # set edge to new stack top
                     edge = self.cursor.execute(
-                        self._sql[28], (graph, graph, tree, edge[2])
+                        self.sql[28], (graph, graph, tree, edge[2])
                     ).fetchone()
 
                     # ask stack top for its branch tips
                     branch_tips = self.cursor.execute(
-                        self._sql[29], (graph, edge[1])
+                        self.sql[29], (graph, edge[1])
                     ).fetchall()
                     hooks.get("after_pop", lambda x, y, z: None)(
                         edge, branch_tips, self.cursor
@@ -1433,7 +1592,7 @@ class Database:
             raise Exception(f"cannot alter cycles of '{graph}'")
 
         # delete existing cycles
-        self.cursor.execute(self._sql[30], (graph,))
+        self.cursor.execute(self.sql[30], (graph,))
 
         def cycles_handler(
             tree: int,
@@ -1452,7 +1611,7 @@ class Database:
 
             # edge's cycle if any
             edge_cycle_id = cursor.execute(
-                self._sql[31], (edge[0],)
+                self.sql[31], (edge[0],)
             ).fetchone()
             if edge_cycle_id is not None:
                 edge_cycle_id = edge_cycle_id[0]
@@ -1462,7 +1621,7 @@ class Database:
 
                 # fetch the edge ids of the cycle
                 cycle_edge_ids = cursor.execute(
-                    self._sql[32], (bt[5], current_time, tree, graph_id)
+                    self.sql[32], (bt[5], current_time, tree, graph_id)
                 ).fetchall()
 
                 # compute the cycle length
@@ -1470,13 +1629,13 @@ class Database:
 
                 # create a cycle record and return its id
                 cycle_id = cursor.execute(
-                    self._sql[33], (graph_id, cardinality)
+                    self.sql[33], (graph_id, cardinality)
                 ).fetchone()[0]
 
                 # and use cycle_id and cycle_edge_ids to create cycle_edge
                 # records
                 cursor.executemany(
-                    self._sql[34],
+                    self.sql[34],
                     [(cycle_id, edge_id[0]) for edge_id in cycle_edge_ids]
                 )
 
@@ -1494,7 +1653,7 @@ class Database:
                     continue
 
                 # fetch piggyback cycle id
-                _ = cursor.execute(self._sql[35], (D[0],)).fetchone()
+                _ = cursor.execute(self.sql[35], (D[0],)).fetchone()
 
                 # continue if piggyback cycle doesnt exist
                 if _ is None:
@@ -1509,27 +1668,27 @@ class Database:
 
                 # fetch E, edge that closed piggyback cycle
                 E = cursor.execute(
-                    self._sql[36], (piggyback_cycle_id,)
+                    self.sql[36], (piggyback_cycle_id,)
                 ).fetchone()
 
                 if E is None:
                     continue
 
                 # fetch A, edge that E closed piggyback cycle on
-                A = cursor.execute(self._sql[37], (E[1],)).fetchone()
+                A = cursor.execute(self.sql[37], (E[1],)).fetchone()
 
                 if A is None:
                     continue
 
                 # fetch C, edge that closed new cycle onto D
-                C = cursor.execute(self._sql[38], (D[2],)).fetchone()
+                C = cursor.execute(self.sql[38], (D[2],)).fetchone()
 
                 if C is None:
                     continue
 
                 # fetch B, from which new cycle forks from piggyback
                 B = cursor.execute(
-                    self._sql[39],
+                    self.sql[39],
                     (graph_id, tree, C[5], A[5], piggyback_cycle_id)
                 ).fetchone()
 
@@ -1538,7 +1697,7 @@ class Database:
 
                 # fetch the new cycle edges
                 cycle_edges = cursor.execute(
-                    self._sql[40],
+                    self.sql[40],
                     (A[5], B[5], D[5], E[5], B[1], B[1], C[5], tree, graph_id)
                 ).fetchall()
 
@@ -1547,12 +1706,12 @@ class Database:
 
                 # create new cycle record
                 cycle_id = cursor.execute(
-                    self._sql[41], (graph_id, cardinality)
+                    self.sql[41], (graph_id, cardinality)
                 ).fetchone()[0]
 
                 # insert new cycle edges
                 cursor.executemany(
-                    self._sql[42], [(cycle_id, e[0]) for e in cycle_edges]
+                    self.sql[42], [(cycle_id, e[0]) for e in cycle_edges]
                 )
 
                 # set update graph flag to true
@@ -1560,7 +1719,7 @@ class Database:
 
             # update the graph's acyclic column
             if update_graph_table:
-                cursor.execute(self._sql[43], (graph_id,))
+                cursor.execute(self.sql[43], (graph_id,))
             cursor.connection.commit()
 
         # run the search
@@ -1572,26 +1731,26 @@ class Database:
         """"""
 
         # raise if graph is marked acyclic
-        if self.cursor.execute(self._sql[44], (graph,)).fetchone()[0] > 0:
+        if self.cursor.execute(self.sql[44], (graph,)).fetchone()[0] > 0:
             raise Exception(f"graph '{graph}' is not acyclic")
 
         # reset topolgical ids of graph
-        self.cursor.execute(self._sql[45], (graph,))
+        self.cursor.execute(self.sql[45], (graph,))
         self.connection.commit()
 
         def before_pop(
             edge: tuple, branch_tips: list[tuple], cursor: object
         ) -> None:
             """"""
-            cursor.execute(self._sql[46], (edge[6], edge[2], edge[2]))
+            cursor.execute(self.sql[46], (edge[6], edge[2], edge[2]))
 
         search_hooks["before_pop"] = before_pop
         self.df_search(graph, **search_hooks)
 
         # reorder vertices so sort is ascending in topological_id
         topological_id = 0
-        for vertex in self.cursor.execute(self._sql[47], (graph,)).fetchall():
-            self.cursor.execute(self._sql[48], (topological_id, vertex[0]))
+        for vertex in self.cursor.execute(self.sql[47], (graph,)).fetchall():
+            self.cursor.execute(self.sql[48], (topological_id, vertex[0]))
             topological_id += 1
         self.connection.commit()
 
@@ -1599,7 +1758,7 @@ class Database:
         """"""
 
         # initialize vertices
-        self.cursor.execute(self._sql[49], (graph,))
+        self.cursor.execute(self.sql[49], (graph,))
         self.connection.commit()
 
         # new tree hook
@@ -1612,7 +1771,7 @@ class Database:
             """"""
 
             # initialize scc attributes of the starting vertex
-            cursor.execute(self._sql[50], (edge[2],))
+            cursor.execute(self.sql[50], (edge[2],))
 
         # after push hook
         def after_push(
@@ -1621,10 +1780,10 @@ class Database:
             """"""
 
             # fetch child vertex
-            child = cursor.execute(self._sql[51], (edge[1],)).fetchone()
+            child = cursor.execute(self.sql[51], (edge[1],)).fetchone()
             if child is None:
                 child = self.cursor.execute(
-                    self._sql[52], (edge[1],)
+                    self.sql[52], (edge[1],)
                 ).fetchone()
 
             # don't interact with other components
@@ -1632,12 +1791,12 @@ class Database:
                 return
 
             # fetch parent
-            parent = self.cursor.execute(self._sql[53], (edge[2],)).fetchone()
+            parent = self.cursor.execute(self.sql[53], (edge[2],)).fetchone()
 
             # parent inherets component's smallest lowlink or its own
             if Color.white not in (t[4] for t in branch_tips):
                 self.cursor.execute(
-                    self._sql[54], (min(parent[2], child[1]), parent[0])
+                    self.sql[54], (min(parent[2], child[1]), parent[0])
                 )
 
         # after pop hook
@@ -1647,20 +1806,20 @@ class Database:
             """"""
 
             # fetch scc attributes of parent and child vertex
-            parent = self.cursor.execute(self._sql[55], (edge[2],)).fetchone()
-            child = self.cursor.execute(self._sql[56], (edge[1],)).fetchone()
+            parent = self.cursor.execute(self.sql[55], (edge[2],)).fetchone()
+            child = self.cursor.execute(self.sql[56], (edge[1],)).fetchone()
 
             # bumped into a component vertex, adjust its lowlink
             if child[3] == 1:
                 self.cursor.execute(
-                    self._sql[57], (min(parent[2], child[2]), parent[0])
+                    self.sql[57], (min(parent[2], child[2]), parent[0])
                 )
 
             # pop parent vertex off scc stack
             if child[2] == parent[1]:
-                self.cursor.execute(self._sql[58], (parent[1],))
+                self.cursor.execute(self.sql[58], (parent[1],))
             if not branch_tips:
-                self.cursor.execute(self._sql[59], (child[0],))
+                self.cursor.execute(self.sql[59], (child[0],))
 
         self.df_search(
             graph,
@@ -1694,7 +1853,7 @@ class Database:
             iteration_complete(adjacent_obj, obj, graph, self.cursor)
         tixe(graph, self.cursor)
 
-    def bf_search(self: object, graph: str, start_edge_id: int) -> None:
+    def ebf_search(self: object, graph: str, start_edge_id: int) -> None:
         """"""
 
         def enter(edge: tuple, graph: str, cursor: object) -> None:
@@ -1707,36 +1866,36 @@ class Database:
                 )
 
             # initialize all edges
-            cursor.execute(self._sql[60], (graph,))
-            cursor.execute(self._sql[61], (edge[0],))
+            cursor.execute(self.sql[60], (graph,))
+            cursor.execute(self.sql[61], (edge[0],))
 
         def loop_condition(graph: str, cursor: object) -> bool:
             """"""
-            return 0 < cursor.execute(self._sql[62], (graph,)).fetchone()[0]
+            return 0 < cursor.execute(self.sql[62], (graph,)).fetchone()[0]
 
         def pop(graph: str, cursor: object) -> tuple:
             """"""
-            next_edge = cursor.execute(self._sql[63], (graph,)).fetchone()
-            cursor.execute(self._sql[64], (next_edge[0],))
+            next_edge = cursor.execute(self.sql[63], (graph,)).fetchone()
+            cursor.execute(self.sql[64], (next_edge[0],))
             return next_edge
 
         def adjacency(edge: tuple, graph: str, cursor: object) -> list:
             """"""
-            return cursor.execute(self._sql[65], 8 * (edge[0],)).fetchall()
+            return cursor.execute(self.sql[65], 8 * (edge[0],)).fetchall()
 
         def push(
             adj_edge: tuple, edge: tuple, graph: str, cursor: object
         ) -> None:
             """"""
-            cursor.execute(self._sql[66], (edge[0], graph, adj_edge[0]))
+            cursor.execute(self.sql[66], (edge[0], graph, adj_edge[0]))
 
         def tixe(graph: str, cursor: object) -> None:
             """"""
-            cursor.execute(self._sql[67], (graph,))
+            cursor.execute(self.sql[67], (graph,))
 
         # fetch start edge data
         start_edge = self.cursor.execute(
-            self._sql[68], (start_edge_id,)
+            self.sql[68], (start_edge_id,)
         ).fetchone()
         if start_edge is None:
             raise Exception(f"edge '{start_edge_id}' does not exist")
@@ -1751,6 +1910,164 @@ class Database:
             push=push,
             exit=tixe,
         )
+
+    def vbf_search(
+        self: object, graph: str, start_vertex_id: int, **hooks: dict
+    ) -> None:
+        """"""
+
+        # check for immutability flags set
+        if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
+            raise Exception(
+                f"cannot alter vertices/edges/cycles/cycle edges of '{graph}'"
+            )
+
+        # run enter hook
+        hooks.get("enter", lambda x, y: None)(graph, self.cursor)
+
+        # reset the vertices
+        self.cursor.execute(
+            """
+            UPDATE vertex
+            SET
+                tree = NULL,
+                color = 0,
+                predecessor = NULL,
+                bf_distance = ?,
+                pushed = NULL
+            WHERE graph_id = ?
+            """,
+            (math.inf, graph),
+        )
+
+        # initialize queue order paramter
+        pushed = 0
+
+        # fetch start vertex
+        s = self.cursor.execute(
+            """
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE graph_id = ? AND id = ?
+                LIMIT 1
+                """,
+            (graph, start_vertex_id),
+        ).fetchone()
+        if s is None:
+            raise Exception(
+                f"vertex with id '{start_vertex_id}' not part of {graph}"
+            )
+
+        # push the edge to start
+        hooks.get("before_enqueue", lambda x, y: None)(s, self.cursor)
+        self.cursor.execute(
+            """
+            UPDATE
+                vertex
+            SET
+                color = 1,
+                predecessor = NULL,
+                bf_distance = 0,
+                pushed = ?
+            WHERE
+                graph_id = ? AND id = ?
+            """,
+            (pushed, graph, s[0]),
+        )
+        hooks.get("after_enqueue", lambda x, y: None)(
+            s[:4] + (pushed,), self.cursor
+        )
+
+        # while there are vertices to handle
+        while (
+            self.cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM vertex
+                WHERE graph_id = ? AND pushed IS NOT NULL
+                """,
+                (graph,),
+            ).fetchone()[0]
+            > 0
+        ):
+
+            # fetch and dequeue the next vertex
+            hooks.get("before_dequeue", lambda x: None)(self.cursor)
+            u = self.cursor.execute(
+                """
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE graph_id = ? AND pushed IS NOT NULL
+                ORDER BY pushed ASC
+                LIMIT 1
+                """,
+                (graph,),
+            ).fetchone()
+            self.cursor.execute(
+                """
+                UPDATE vertex
+                SET color = 2, pushed = NULL
+                WHERE id = ?
+                """,
+                (u[0],),
+            )
+            hooks.get("after_dequeue", lambda x, y: None)(u, self.cursor)
+
+            # handle its descendents bf
+            for v in self.cursor.execute(
+                """
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE id IN (
+                    SELECT child_vertex_id
+                    FROM edge
+                    WHERE parent_vertex_id = ?
+                )
+                UNION
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE id IN (
+                    SELECT parent_vertex_id
+                    FROM edge
+                    WHERE child_vertex_id = ?
+                )
+                """,
+                2 * (u[0],),
+            ).fetchall():
+
+                # adjacency hook
+                hooks.get("handle_adjacency", lambda x, y, z: None)(
+                    u, v, self.cursor
+                )
+
+                if v[2] == Color.white:
+                    pushed += 1
+
+                    # push descendent onto queue
+                    hooks.get("before_enqueue", lambda x, y: None)(
+                        v, self.cursor
+                    )
+                    self.cursor.execute(
+                        """
+                        UPDATE
+                            vertex
+                        SET
+                            color = 1,
+                            predecessor = ?,
+                            bf_distance = ?,
+                            pushed = ?
+                        WHERE
+                            graph_id = ? AND id = ?
+                        """,
+                        (u[0], u[4] + 1, pushed, graph, v[0]),
+                    )
+                    hooks.get("after_enqueue", lambda x, y: None)(
+                        v[:4] + (pushed,), self.cursor
+                    )
+
+        # cleanup
+        self.connection.commit()
+        hooks.get("exit", lambda x, y: None)(graph, self.cursor)
 
     def minimum_spanning_tree(
         self: object, graph: str, start_vertex_id: int
@@ -1767,23 +2084,23 @@ class Database:
                 )
 
             # initialize all edges
-            cursor.execute(self._sql[69], (math.inf, graph))
-            cursor.execute(self._sql[70], (vertex[0],))
+            cursor.execute(self.sql[69], (math.inf, graph))
+            cursor.execute(self.sql[70], (vertex[0],))
 
         def loop_condition(graph: str, cursor: object) -> bool:
             """"""
-            return 0 < cursor.execute(self._sql[71], (graph,)).fetchone()[0]
+            return 0 < cursor.execute(self.sql[71], (graph,)).fetchone()[0]
 
         def pop(graph: str, cursor: object) -> tuple:
             """"""
-            next_vertex = cursor.execute(self._sql[72], (graph,)).fetchone()
-            cursor.execute(self._sql[73], (graph, next_vertex[0])).fetchone()
+            next_vertex = cursor.execute(self.sql[72], (graph,)).fetchone()
+            cursor.execute(self.sql[73], (graph, next_vertex[0])).fetchone()
             return next_vertex
 
         def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
             """"""
             return cursor.execute(
-                self._sql[74], (graph, vertex[0], graph, vertex[0], graph)
+                self.sql[74], (graph, vertex[0], graph, vertex[0], graph)
             ).fetchall()
 
         def push(
@@ -1791,18 +2108,18 @@ class Database:
         ) -> None:
             """"""
             weight = cursor.execute(
-                self._sql[75],
+                self.sql[75],
                 (graph, adj_vertex[0], vertex[0], adj_vertex[0], vertex[0])
             ).fetchone()
             if weight is None:
                 raise Exception("no weight?")
             if adj_vertex[3] == 0 and adj_vertex[2] > weight[0]:
                 cursor.execute(
-                    self._sql[76], (vertex[0], weight[0], adj_vertex[0])
+                    self.sql[76], (vertex[0], weight[0], adj_vertex[0])
                 )
 
         start_vertex = self.cursor.execute(
-            self._sql[77], (start_vertex_id,)
+            self.sql[77], (start_vertex_id,)
         ).fetchone()
         if start_vertex is None:
             raise Exception(f"edge '{start_vertex_id}' does not exist")
@@ -1832,40 +2149,40 @@ class Database:
                 )
 
             # initialize all edges
-            cursor.execute(self._sql[78], (math.inf, graph))
-            cursor.execute(self._sql[79], (vertex[0],))
+            cursor.execute(self.sql[78], (math.inf, graph))
+            cursor.execute(self.sql[79], (vertex[0],))
 
         def loop_condition(graph: str, cursor: object) -> bool:
             """"""
-            return 0 < cursor.execute(self._sql[80], (graph,)).fetchone()[0]
+            return 0 < cursor.execute(self.sql[80], (graph,)).fetchone()[0]
 
         def pop(graph: str, cursor: object) -> tuple:
             """"""
-            next_vertex = cursor.execute(self._sql[81], (graph,)).fetchone()
-            cursor.execute(self._sql[82], (graph, next_vertex[0])).fetchone()
+            next_vertex = cursor.execute(self.sql[81], (graph,)).fetchone()
+            cursor.execute(self.sql[82], (graph, next_vertex[0])).fetchone()
             return next_vertex
 
         def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
             """"""
-            return cursor.execute(self._sql[83], (graph, vertex[0])).fetchall()
+            return cursor.execute(self.sql[83], (graph, vertex[0])).fetchall()
 
         def push(
             adj_vertex: tuple, vertex: tuple, graph: str, cursor: object
         ) -> None:
             """"""
             weight = cursor.execute(
-                self._sql[84], (graph, vertex[0], adj_vertex[0])
+                self.sql[84], (graph, vertex[0], adj_vertex[0])
             ).fetchone()
             if weight is None:
                 raise Exception("no weight!")
             if adj_vertex[2] > vertex[2] + weight[0]:
                 cursor.execute(
-                    self._sql[85],
+                    self.sql[85],
                     (vertex[0], vertex[2] + weight[0], adj_vertex[0])
                 )
 
         start_vertex = self.cursor.execute(
-            self._sql[86], (start_vertex_id,)
+            self.sql[86], (start_vertex_id,)
         ).fetchone()
         if start_vertex is None:
             raise Exception(f"edge '{start_vertex_id}' does not exist")
@@ -1879,3 +2196,174 @@ class Database:
             adjacency=adjacency,
             push=push,
         )
+
+    def maximum_flow(
+        self: object, graph: str, source_vertex_id: int, sink_vertex_id: int
+    ) -> None:
+        """
+        WIP NOTES
+
+        - each edge has a nonnegative capacity
+        - a flow defined on G means that each edge has a flow value between 0 and its capacity
+        - the value of the flow on G is the sum of the flow values of edges leaving the source vertex minus the sum of the flow values of edges entering the source vertex
+        - the maximum flow problem is to find a flow of maximum value on G
+        - one of an antiparallel edge set can be transformed into two edges with a new vertex in between, and the new edges have the same capacity as the original edge
+        - supersource and supersink may need to exist
+        - "is residual", meaning the difference c(u,v) - f(u,v) > 0 is how to select the residual network
+        - set aux_id to something like "imaginary" to distinguish it as a reverse edge, maybe use metadata instead
+
+        Need vertex-based bfs.
+        """
+
+        # check for immutability flags set
+        if self.check_mode(graph, VEIM, EDIM):
+            raise Exception(f"cannot alter vertices/edges of '{graph}'")
+
+        # set flows to zero
+        self.cursor.execute(
+            """
+            UPDATE edge
+            SET flow = 0
+            WHERE graph_id = ?
+            """,
+            (graph,)
+        )
+
+        def generate_edges():
+            """"""
+            chunk_cursor = self.connection.execute(
+                """
+                SELECT
+                    id,
+                    parent_vertex_id,
+                    child_vertex_id,
+                    mf_capacity,
+                    metadata,
+                    CASE
+                        WHEN parent_vertex_id < child_vertex_id THEN parent_vertex_id
+                        ELSE child_vertex_id
+                    END AS v1,
+                    CASE
+                        WHEN parent_vertex_id < child_vertex_id THEN child_vertex_id
+                        ELSE parent_vertex_id
+                    END AS v2
+                FROM edge
+                ORDER BY v1, v2, parent_vertex_id, child_vertex_id
+                """,
+                (graph,)
+            )
+            while chunk := chunk_cursor.fetchone() is not None:
+                yield chunk
+
+        for _, edges in groupby(generate_edges(), lambda t: (t[0], t[1])):
+            edges = list(edges)
+
+            # fix any antiparallel edges and add backflows
+            for edge in (e for e in edges if e[1] < e[2]):
+                vertex_id = self.add_vertices(graph, {"metadata": {"imaginary": True}})[0]
+                _ = self.add_edges(
+                    graph,
+                    {
+                        "parent_vertex_id": edge[1],
+                        "child_vertex_id": vertex_id,
+                        "mf_capacity": edge[3],
+                        "metadata": {"imaginary": True}
+                    },
+                    {
+                        "parent_vertex_id": vertex_id,
+                        "child_vertex_id": edge[2],
+                        "mf_capacity": edge[3],
+                        "metadata": {"imaginary": True}
+                    },
+                    {
+                        "parent_vertex_id": vertex_id,
+                        "child_vertex_id": edge[1],
+                        "mf_capacity": edge[3],
+                        "metadata": {"imaginary": True}
+                    },
+                    {
+                        "parent_vertex_id": edge[2],
+                        "child_vertex_id": vertex_id,
+                        "mf_capacity": edge[3],
+                        "metadata": {"imaginary": True}
+                    },
+                )
+                self.alter_edges(
+                    graph,
+                    id=edge[0],
+                    metadata=json.loads(edge[4]).update({"hiding": True})
+                )
+
+            # just add backflow for other direction of edges
+            for edge in (e for e in edges if e[1] >= e[2]):
+                _ = self.add_edges(
+                    graph,
+                    {
+                        "parent_vertex_id": edges[2],
+                        "child_vertex_id": edges[1],
+                        "mf_capacity": edges[3],
+                        "mf_flow": edges[3],
+                        "metadata": {"imaginary": True}
+                    }
+                )
+
+        # main loop
+        while True:
+            
+            # bfs
+            self.vbf_search(graph, source_vertex_id)
+
+            # compute bottleneck capacity
+            path = self.cursor.execute(
+                """
+                WITH
+                    RECURSIVE path(flow, vertex_id) AS (
+                        SELECT
+                            flow,
+                            child_vertex_id
+                        FROM edge
+                        WHERE parent_vertex_id = ? AND flow < capacity AND metadata NOT LIKE '%hiding%'
+                        UNION ALL
+                        SELECT
+                            MIN(e.flow, p.flow),
+                            e.child_vertex_id
+                        FROM edge AS e
+                        JOIN path AS p
+                            ON e.parent_vertex_id = p.vertex_id
+                        WHERE e.flow < e.capacity AND metadata NOT LIKE '%hiding%'
+                    )
+                    SELECT * FROM path
+                """,
+                (sink_vertex_id,)
+            ).fetchall()
+
+            if path is None:
+                break
+            bottleneck_capacity = min(t[0] for t in path)
+
+            for edge in path:
+                if edge[0] is not None:
+                    f = edge[0] + bottleneck_capacity
+                else:
+                    f = edge[0] - bottleneck_capacity
+                self.cursor.execute(
+                    "UPDATE edge SET flow = ? WHERE id = ?",
+                    (f, edge[1])
+                )
+
+        # remove imaginary edges and revert antiparallels
+        self.cursor.execute(
+            "DELETE FROM edge WHERE graph_id = ? AND metadata LIKE '%imaginary%'",
+            (graph,)
+        )
+        self.cursor.execute(
+            "DELETE FROM vertex WHERE graph_id = ? AND metadata LIKE '%imaginary%'",
+            (graph,)
+        )
+        for edge in generate_edges():
+            metadata = json.loads(edge[4])
+            self.cursor.execute(
+                "UPDATE edge SET metadata = ? WHERE id = ?",
+                (json.dumps({k: v for k, v in metadata.items() if k != "hiding"}), edge[0])
+            )
+        

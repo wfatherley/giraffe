@@ -10,7 +10,7 @@ from . import FreshModelTestCase
 class TestDFSearch(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("df_search", dir(giraffe.Database))
 
@@ -349,7 +349,7 @@ class TestDFSearch(FreshModelTestCase):
 class TestDFFindCycles(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("find_cycles", dir(giraffe.Database))
 
@@ -515,7 +515,7 @@ class TestDFFindCycles(FreshModelTestCase):
 class TestTopologicalSort(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("topological_sort", dir(giraffe.Database))
 
@@ -608,7 +608,7 @@ class TestTopologicalSort(FreshModelTestCase):
 class TestStronglyConnectedComponents(FreshModelTestCase):
     """"""
 
-    def test_is_in_bilhparg(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("strongly_connected_components", dir(giraffe.Database))
 

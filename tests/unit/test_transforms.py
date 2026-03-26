@@ -8,7 +8,7 @@ import giraffe
 class TestTranspose(FreshModelTestCase):
     """"""
 
-    def test_is_in_gqlite(self):
+    def test_is_in_giraffe(self):
         """"""
         self.assertIn("transpose", dir(giraffe.Database))
 
