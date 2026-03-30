@@ -664,3 +664,261 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
                 (4, 0, 5)
             ]
         )
+
+
+class TestMaximumFlow(FreshModelTestCase):
+    """"""
+
+    def test_is_in_giraffe(self):
+        """"""
+        self.assertIn("maximum_flow", dir(giraffe.Database))
+
+    def test_is_callable(self):
+        """"""
+        self.assertTrue(callable(giraffe.Database.maximum_flow))
+
+    def test_signature_unchanged(self):
+        """"""
+
+        # fetch signature
+        s = inspect.signature(giraffe.Database.maximum_flow)
+
+        # verify parameters are unchanged
+        self.assertEqual(len(s.parameters), 4)
+
+        fles = s.parameters["self"]
+        self.assertEqual(fles.default, fles.empty)
+        self.assertEqual(fles.kind, fles.POSITIONAL_OR_KEYWORD)
+
+        graph = s.parameters["graph"]
+        self.assertEqual(graph.default, graph.empty)
+        self.assertEqual(graph.kind, graph.POSITIONAL_OR_KEYWORD)
+
+        source_vertex_id = s.parameters["source_vertex_id"]
+        self.assertEqual(source_vertex_id.default, source_vertex_id.empty)
+        self.assertEqual(source_vertex_id.kind, source_vertex_id.POSITIONAL_OR_KEYWORD)
+
+        sink_vertex_id = s.parameters["sink_vertex_id"]
+        self.assertEqual(sink_vertex_id.default, sink_vertex_id.empty)
+        self.assertEqual(sink_vertex_id.kind, sink_vertex_id.POSITIONAL_OR_KEYWORD)
+
+    def test_handle_cormen_et_al_example(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_graph("test", 1, 0)
+        _ = db.add_vertices("test", *[{} for _ in range(6)])
+        _ = db.add_edges(
+            "test",
+            {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": 16},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[2], "mf_capacity": 13},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[1], "mf_capacity": 4},
+            {"parent_vertex_id": _[1], "child_vertex_id": _[3], "mf_capacity": 12},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[4], "mf_capacity": 14},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[2], "mf_capacity": 9},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[5], "mf_capacity": 20},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[3], "mf_capacity": 7},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[5], "mf_capacity": 4}
+        )
+        db.maximum_flow("test", 0, 5)
+        # for x in db.cursor.execute(
+        #         """
+        #         SELECT id, mf_flow
+        #         FROM edge
+        #         """
+        #     ).fetchall(): print(x)
+        self.assertEqual(
+            db.cursor.execute(
+                """
+                SELECT id, mf_flow
+                FROM edge
+                """
+            ).fetchall(),
+            [
+                (0, 12),
+                (1, 11),
+                (2, 0),
+                (3, 12),
+                (4, 0),
+                (5, 11),
+                (6, 0),
+                (7, 19),
+                (8, 0),
+                (9, 7)
+            ]
+        )
+
+
+# class TestFlowNetworkWalkVBF(FreshModelTestCase):
+#     """"""
+
+#     def test_is_in_giraffe(self):
+#         """"""
+#         self.assertIn("flow_network_walk_vbf", dir(giraffe.Database))
+
+#     def test_is_callable(self):
+#         """"""
+#         self.assertTrue(callable(giraffe.Database.flow_network_walk_vbf))
+
+#     def test_signature_unchanged(self):
+#         """"""
+
+#         # fetch signature
+#         s = inspect.signature(giraffe.Database.flow_network_walk_vbf)
+
+#         # verify parameters are unchanged
+#         self.assertEqual(len(s.parameters), 3)
+
+#         fles = s.parameters["self"]
+#         self.assertEqual(fles.default, fles.empty)
+#         self.assertEqual(fles.kind, fles.POSITIONAL_OR_KEYWORD)
+
+#         graph = s.parameters["graph"]
+#         self.assertEqual(graph.default, graph.empty)
+#         self.assertEqual(graph.kind, graph.POSITIONAL_OR_KEYWORD)
+
+#         start_vertex_id = s.parameters["start_vertex_id"]
+#         self.assertEqual(start_vertex_id.default, start_vertex_id.empty)
+#         self.assertEqual(start_vertex_id.kind, start_vertex_id.POSITIONAL_OR_KEYWORD)
+
+#     def test_handle_cormen_etal_example(self):
+#         """"""
+#         db = giraffe.Database(self.con)
+#         db.create_graph("test", 1, 0)
+#         _ = db.add_vertices("test", *[{} for _ in range(8)])
+#         _ = db.add_edges(
+#             "test",
+#             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[0], "child_vertex_id": _[4], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[1], "child_vertex_id": _[5], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[2], "child_vertex_id": _[3], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[2], "child_vertex_id": _[5], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[2], "child_vertex_id": _[6], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[3], "child_vertex_id": _[6], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[3], "child_vertex_id": _[7], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[5], "child_vertex_id": _[6], "mf_capacity": 1, "mf_flow": 0},
+#             {"parent_vertex_id": _[6], "child_vertex_id": _[7], "mf_capacity": 1, "mf_flow": 0}
+#         )
+#         db.flow_network_walk_vbf("test", 1)
+#         for x in db.cursor.execute(
+#                 """
+#                 SELECT id, color, predecessor, bf_distance
+#                 FROM vertex
+#                 """
+#             ).fetchall(): print(x)
+#         self.assertEqual(
+#             db.cursor.execute(
+#                 """
+#                 SELECT id, color, predecessor, bf_distance
+#                 FROM vertex
+#                 """
+#             ).fetchall(),
+#             [
+#                 (0, 2, 1, 1),
+#                 (1, 2, None, 0),
+#                 (2, 2, 5, 2),
+#                 (3, 2, 2, 3),
+#                 (4, 2, 0, 2),
+#                 (5, 2, 1, 1),
+#                 (6, 2, 5, 2),
+#                 (7, 2, 6, 3),
+#             ],
+#         )
+
+    # def test_handle_weird_peterson(self):
+    #     """"""
+    #     db = giraffe.Database(self.con)
+    #     db.create_graph("test", 1, 0)
+    #     _ = db.add_vertices("test", *[{} for _ in range(10)])
+    #     _ = db.add_edges(
+    #         "test",
+    #         {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
+    #         {"parent_vertex_id": _[1], "child_vertex_id": _[2]},
+    #         {"parent_vertex_id": _[2], "child_vertex_id": _[3]},
+    #         {"parent_vertex_id": _[3], "child_vertex_id": _[4]},
+    #         {"parent_vertex_id": _[4], "child_vertex_id": _[0]},
+    #         {"parent_vertex_id": _[0], "child_vertex_id": _[5]},
+    #         {"parent_vertex_id": _[1], "child_vertex_id": _[6]},
+    #         {"parent_vertex_id": _[2], "child_vertex_id": _[7]},
+    #         {"parent_vertex_id": _[3], "child_vertex_id": _[8]},
+    #         {"parent_vertex_id": _[4], "child_vertex_id": _[9]},
+    #         {"parent_vertex_id": _[0], "child_vertex_id": _[6]},
+    #         {"parent_vertex_id": _[1], "child_vertex_id": _[7]},
+    #         {"parent_vertex_id": _[2], "child_vertex_id": _[8]},
+    #         {"parent_vertex_id": _[3], "child_vertex_id": _[9]},
+    #         {"parent_vertex_id": _[4], "child_vertex_id": _[5]},
+    #     )
+    #     db.vbf_search("test", 0)
+    #     self.assertEqual(
+    #         db.cursor.execute(
+    #             """
+    #             SELECT id, color, predecessor, bf_distance
+    #             FROM vertex
+    #             """
+    #         ).fetchall(),
+    #         [
+    #             (0, 2, None, 0),
+    #             (1, 2, 0, 1),
+    #             (2, 2, 1, 2),
+    #             (3, 2, 4, 2),
+    #             (4, 2, 0, 1),
+    #             (5, 2, 0, 1),
+    #             (6, 2, 0, 1),
+    #             (7, 2, 1, 2),
+    #             (8, 2, 2, 3),
+    #             (9, 2, 4, 2),
+    #         ],
+    #     )
+
+    # def test_handle_peterson(self):
+    #     """"""
+    #     db = giraffe.Database(self.con)
+    #     db.create_peterson("test")
+    #     db.vbf_search("test", 0)
+    #     self.assertEqual(
+    #         db.cursor.execute(
+    #             """
+    #             SELECT id, color, predecessor, bf_distance
+    #             FROM vertex
+    #             """
+    #         ).fetchall(),
+    #         [
+    #             (0, 2, None, 0),
+    #             (1, 2, 0, 1),
+    #             (2, 2, 1, 2),
+    #             (3, 2, 4, 2),
+    #             (4, 2, 0, 1),
+    #             (5, 2, 0, 1),
+    #             (6, 2, 1, 2),
+    #             (7, 2, 2, 3),
+    #             (8, 2, 3, 3),
+    #             (9, 2, 4, 2),
+    #         ],
+    #     )
+
+    # def test_handle_frucht(self):
+    #     """"""
+    #     db = giraffe.Database(self.con)
+    #     db.create_frucht("test")
+    #     db.vbf_search("test", 0)
+    #     self.assertEqual(
+    #         db.cursor.execute(
+    #             """
+    #             SELECT id, color, predecessor, bf_distance
+    #             FROM vertex
+    #             """
+    #         ).fetchall(),
+    #         [
+    #             (0, 2, None, 0),
+    #             (1, 2, 0, 1),
+    #             (2, 2, 1, 2),
+    #             (3, 2, 0, 1),
+    #             (4, 2, 3, 2),
+    #             (5, 2, 1, 2),
+    #             (6, 2, 4, 3),
+    #             (7, 2, 5, 3),
+    #             (8, 2, 11, 3),
+    #             (9, 2, 10, 2),
+    #             (10, 2, 0, 1),
+    #             (11, 2, 10, 2),
+    #         ],
+    #     )
