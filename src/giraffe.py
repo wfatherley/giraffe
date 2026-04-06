@@ -26,7 +26,7 @@ from itertools import groupby
 
 def vertex_odict_factory() -> OrderedDict:
     """Return ordered mapping of vertex columns and their defaults.
-    
+
     Return an instance of ``collections.OrderedDict``, with keys
     corresponding to the attributes (columns) of the vertex object
     (table). The values are the defaults specified in the vertex DDL.
@@ -57,7 +57,7 @@ def vertex_odict_factory() -> OrderedDict:
 
 def edge_odict_factory() -> OrderedDict:
     """Return ordered mapping of edge columns and their defaults.
-    
+
     Return an instance of ``collections.OrderedDict``, with keys
     corresponding to the attributes (columns) of the edge object
     (table). The values are the defaults specified in the edge DDL.
@@ -1013,7 +1013,7 @@ class Database:
 
     def close(self: object) -> None:
         """Close the cursor then close the connection.
-        
+
         :return None:
         """
         self.cursor.close()
@@ -1021,7 +1021,7 @@ class Database:
 
     def load_schema(self: object) -> None:
         """Execute the model and commit.
-        
+
         :return None:"""
 
         # execute all statements in model
@@ -1033,10 +1033,10 @@ class Database:
         self: object, dql: str, params: object
     ) -> OrderedDict:
         """Fetch one record and return it as an ordered dictionary.
-        
+
         :param dql: a select-statement that returns one record
         :param params: parameters to interpolate into ``dql``
-        
+
         :return collections.OrderedDict:
         """
         cursor = self.cursor.execute(dql, params)
@@ -1046,10 +1046,10 @@ class Database:
     def check_mode(self: object, graph: str, *flags: list) -> bool:
         """Determine if any of the given "mutability mode" flags are
         set for the graph.
-        
+
         :param graph: name of the graph to check
         :param flags: zero or more mode flags to check
-        
+
         :return bool:
         """
 
@@ -1080,7 +1080,7 @@ class Database:
         :param acyclic: whether the graph is acyclic (1) or not (0)
         :param mode: mutability mode flags to set for the graph
         :param metadata: any additional metadata to associate with the graph
-        
+
         :return None:
         """
 
@@ -1098,10 +1098,10 @@ class Database:
 
     def alter_graph(self: object, name: str, **attributes) -> None:
         """Update attributes of a graph with any keyword arguments. Raise ``Exception`` if any keyword is not a valid graph attribute or if no attributes are provided.
-        
+
         :param name: name of the graph to update
         :param attributes: graph attributes to update with
-        
+
         :return None:"""
 
         # raise if called with nothing to alter with
@@ -1126,9 +1126,9 @@ class Database:
 
     def delete_graphs(self: object, *names: list[str]) -> None:
         """Delete graphs with the given names.
-        
+
         :param names: names of the graphs to delete
-        
+
         :return None:
         """
         self.cursor.executemany(self.sql[5], ((n,) for n in names))
@@ -1138,10 +1138,10 @@ class Database:
         self: object, graph: str, *vertices: list[dict]
     ) -> list[int]:
         """Add vertices to graph ``graph``. If a vertex has a "metadata" key, assume the corresponding value is a dictionary and dump it as a JSON object using ``json.dumps``. Raise ``Exception`` if a vertex has keys that are not valid vertex attributes. Return a list of ids for the created vertices.
-        
+
         :param graph: name of the graph to add vertices to
         :param vertices: one or more dictionaries containing vertex attributes
-        
+
         :return list[int]:
         """
 
@@ -1187,10 +1187,10 @@ class Database:
 
     def alter_vertex(self: object, vertex_id: str, **attributes) -> None:
         """Update attributes of a vertex with any keyword arguments. Raise ``Exception`` if any keyword is not a valid vertex attribute or if no attributes are provided. Assume a "metadata" keyword argument is a dictionary and dump it as a JSON object using ``json.dumps``.
-        
+
         :param vertex_id: id of the vertex to update
         :param attributes: vertex attributes to update with
-        
+
         :return None:
         """
 
@@ -1216,26 +1216,24 @@ class Database:
         where_param = record.pop("id")
 
         # udpate
-        self.cursor.execute(
-            self.sql[9], (*record.values(), where_param)
-        )
+        self.cursor.execute(self.sql[9], (*record.values(), where_param))
         self.connection.commit()
 
     def delete_vertices(self: object, *ids: list[str]) -> None:
         """Delete vertices with the given ids.
-        
+
         :param ids: ids of the vertices to delete
-        
+
         :return None:"""
         self.cursor.executemany(self.sql[10], ((i,) for i in ids))
         self.connection.commit()
 
     def add_edges(self: object, graph: str, *edges: list[dict]) -> list[int]:
         """Add edges to graph ``graph``. If an edge has a "metadata" key, assume the corresponding value is a dictionary and dump it as a JSON object using ``json.dumps``. Raise ``Exception`` if an edge has keys that are not valid edge attributes. Return a list of ids for the created edges.
-        
+
         :param graph: name of the graph to add edges to
         :param edges: one or more dictionaries containing edge attributes
-        
+
         :return list[int]:"""
 
         next_id = self.cursor.execute(self.sql[11]).fetchone()[0]
@@ -1280,10 +1278,10 @@ class Database:
 
     def alter_edge(self: object, edge_id: str, **attributes) -> None:
         """Update attributes of an edge with any keyword arguments. Raise ``Exception`` if any keyword is not a valid edge attribute or if no attributes are provided. Assume a "metadata" keyword argument is a dictionary and dump it as a JSON object using ``json.dumps``.
-        
+
         :param edge_id: id of the edge to update
         :param attributes: edge attributes to update with
-        
+
         :return None:
         """
 
@@ -1314,17 +1312,17 @@ class Database:
 
     def delete_edges(self: object, *ids: list[str]) -> None:
         """Delete edges with the given ids.
-        
+
         :param ids: ids of the edges to delete
-        
+
         :return None:"""
         self.cursor.executemany(self.sql[15], ((i,) for i in ids))
 
     def create_frucht(self: object, name: str) -> None:
         """Create a directed graph with Frucht vertex-edge structure.
-        
+
         :param name: name of the graph to create
-        
+
         :return None:"""
         self.create_graph(name, 1)
         _ = self.add_vertices(name, *[{"metadata": {}} for _ in range(12)])
@@ -1352,9 +1350,9 @@ class Database:
 
     def create_peterson(self: object, name: str) -> None:
         """Create a directed graph with Peterson vertex-edge structure.
-        
+
         :param name: name of the graph to create
-        
+
         :return None:"""
         self.create_graph(name, 1, 0)
         _ = self.add_vertices(name, *[{"metadata": {}} for _ in range(10)])
@@ -1384,7 +1382,7 @@ class Database:
         chunk_size: int = 250,
     ) -> str:
         """Reverse the direction of all edges in a directed graph. Raise ``Exception`` if the graph's edges are immutable.
-        
+
         :param graph: name of the graph to transpose
         :param transposed_name: name of the transposed graph to create (default is ``graph + "_transpose"``)
         :param chunk_size: number of edges to process at a time
@@ -1403,7 +1401,7 @@ class Database:
         # create a graph record for transposed
         self.cursor.execute(
             self.sql[16],
-            (transposed_name, graph, graph, json.dumps({"graph": graph}))
+            (transposed_name, graph, graph, json.dumps({"graph": graph})),
         )
 
         # clone vertices with chunked pattern
@@ -1544,9 +1542,7 @@ class Database:
                     hooks.get("before_pop", lambda x, y, z: None)(
                         edge, branch_tips, self.cursor
                     )
-                    self.cursor.execute(
-                        self.sql[27], (current_time, edge[0])
-                    )
+                    self.cursor.execute(self.sql[27], (current_time, edge[0]))
                     current_time += 1
                     tree_size -= 1
 
@@ -1605,9 +1601,7 @@ class Database:
             graph_id = edge[6]
 
             # edge's cycle if any
-            edge_cycle_id = cursor.execute(
-                self.sql[31], (edge[0],)
-            ).fetchone()
+            edge_cycle_id = cursor.execute(self.sql[31], (edge[0],)).fetchone()
             if edge_cycle_id is not None:
                 edge_cycle_id = edge_cycle_id[0]
 
@@ -1631,7 +1625,7 @@ class Database:
                 # records
                 cursor.executemany(
                     self.sql[34],
-                    [(cycle_id, edge_id[0]) for edge_id in cycle_edge_ids]
+                    [(cycle_id, edge_id[0]) for edge_id in cycle_edge_ids],
                 )
 
                 # and set update graph falg to true
@@ -1684,7 +1678,7 @@ class Database:
                 # fetch B, from which new cycle forks from piggyback
                 B = cursor.execute(
                     self.sql[39],
-                    (graph_id, tree, C[5], A[5], piggyback_cycle_id)
+                    (graph_id, tree, C[5], A[5], piggyback_cycle_id),
                 ).fetchone()
 
                 if B is None:
@@ -1693,7 +1687,7 @@ class Database:
                 # fetch the new cycle edges
                 cycle_edges = cursor.execute(
                     self.sql[40],
-                    (A[5], B[5], D[5], E[5], B[1], B[1], C[5], tree, graph_id)
+                    (A[5], B[5], D[5], E[5], B[1], B[1], C[5], tree, graph_id),
                 ).fetchall()
 
                 # compute length of cycle
@@ -1856,9 +1850,7 @@ class Database:
 
             # check for immutability flags set
             if self.check_mode(graph, VEIM, EDIM):
-                raise Exception(
-                    f"cannot alter vertices/edges of '{graph}'"
-                )
+                raise Exception(f"cannot alter vertices/edges of '{graph}'")
 
             # initialize all edges
             cursor.execute(self.sql[60], (graph,))
@@ -1904,6 +1896,134 @@ class Database:
             adjacency=adjacency,
             push=push,
             exit=tixe,
+        )
+
+    def minimum_spanning_tree(
+        self: object, graph: str, start_vertex_id: int
+    ) -> None:
+        """"""
+
+        def enter(vertex: tuple, graph: str, cursor: object) -> None:
+            """"""
+
+            # check for immutability flags set
+            if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
+                raise Exception(
+                    f"cannot alter vertices/edges/cycles of '{graph}'"
+                )
+
+            # initialize all edges
+            cursor.execute(self.sql[69], (math.inf, graph))
+            cursor.execute(self.sql[70], (vertex[0],))
+
+        def loop_condition(graph: str, cursor: object) -> bool:
+            """"""
+            return 0 < cursor.execute(self.sql[71], (graph,)).fetchone()[0]
+
+        def pop(graph: str, cursor: object) -> tuple:
+            """"""
+            next_vertex = cursor.execute(self.sql[72], (graph,)).fetchone()
+            cursor.execute(self.sql[73], (graph, next_vertex[0])).fetchone()
+            return next_vertex
+
+        def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
+            """"""
+            return cursor.execute(
+                self.sql[74], (graph, vertex[0], graph, vertex[0], graph)
+            ).fetchall()
+
+        def push(
+            adj_vertex: tuple, vertex: tuple, graph: str, cursor: object
+        ) -> None:
+            """"""
+            weight = cursor.execute(
+                self.sql[75],
+                (graph, adj_vertex[0], vertex[0], adj_vertex[0], vertex[0]),
+            ).fetchone()
+            if weight is None:
+                raise Exception("no weight?")
+            if adj_vertex[3] == 0 and adj_vertex[2] > weight[0]:
+                cursor.execute(
+                    self.sql[76], (vertex[0], weight[0], adj_vertex[0])
+                )
+
+        start_vertex = self.cursor.execute(
+            self.sql[77], (start_vertex_id,)
+        ).fetchone()
+        if start_vertex is None:
+            raise Exception(f"edge '{start_vertex_id}' does not exist")
+
+        self.bf_base(
+            graph,
+            start_vertex,
+            enter=enter,
+            loop_condition=loop_condition,
+            pop=pop,
+            adjacency=adjacency,
+            push=push,
+        )
+
+    def single_source_shortest_path(
+        self: object, graph: str, start_vertex_id: int
+    ) -> bool:
+        """"""
+
+        def enter(vertex: tuple, graph: str, cursor: object) -> None:
+            """"""
+
+            # check for immutability flags set
+            if self.check_mode(graph, VEIM, EDIM):
+                raise Exception(
+                    f"cannot alter vertices/edges/cycles of '{graph}'"
+                )
+
+            # initialize all edges
+            cursor.execute(self.sql[78], (math.inf, graph))
+            cursor.execute(self.sql[79], (vertex[0],))
+
+        def loop_condition(graph: str, cursor: object) -> bool:
+            """"""
+            return 0 < cursor.execute(self.sql[80], (graph,)).fetchone()[0]
+
+        def pop(graph: str, cursor: object) -> tuple:
+            """"""
+            next_vertex = cursor.execute(self.sql[81], (graph,)).fetchone()
+            cursor.execute(self.sql[82], (graph, next_vertex[0])).fetchone()
+            return next_vertex
+
+        def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
+            """"""
+            return cursor.execute(self.sql[83], (graph, vertex[0])).fetchall()
+
+        def push(
+            adj_vertex: tuple, vertex: tuple, graph: str, cursor: object
+        ) -> None:
+            """"""
+            weight = cursor.execute(
+                self.sql[84], (graph, vertex[0], adj_vertex[0])
+            ).fetchone()
+            if weight is None:
+                raise Exception("no weight!")
+            if adj_vertex[2] > vertex[2] + weight[0]:
+                cursor.execute(
+                    self.sql[85],
+                    (vertex[0], vertex[2] + weight[0], adj_vertex[0]),
+                )
+
+        start_vertex = self.cursor.execute(
+            self.sql[86], (start_vertex_id,)
+        ).fetchone()
+        if start_vertex is None:
+            raise Exception(f"edge '{start_vertex_id}' does not exist")
+
+        self.bf_base(
+            graph,
+            start_vertex,
+            enter=enter,
+            loop_condition=loop_condition,
+            pop=pop,
+            adjacency=adjacency,
+            push=push,
         )
 
     def vbf_search(
@@ -2064,428 +2184,140 @@ class Database:
         self.connection.commit()
         hooks.get("exit", lambda x, y: None)(graph, self.cursor)
 
-    def minimum_spanning_tree(
-        self: object, graph: str, start_vertex_id: int
+    def flow_network_walk_vbf(
+        self: object, graph: str, source_vertex_id: int, sink_vertex_id: int
     ) -> None:
         """"""
 
-        def enter(vertex: tuple, graph: str, cursor: object) -> None:
-            """"""
-
-            # check for immutability flags set
-            if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
-                raise Exception(
-                    f"cannot alter vertices/edges/cycles of '{graph}'"
-                )
-
-            # initialize all edges
-            cursor.execute(self.sql[69], (math.inf, graph))
-            cursor.execute(self.sql[70], (vertex[0],))
-
-        def loop_condition(graph: str, cursor: object) -> bool:
-            """"""
-            return 0 < cursor.execute(self.sql[71], (graph,)).fetchone()[0]
-
-        def pop(graph: str, cursor: object) -> tuple:
-            """"""
-            next_vertex = cursor.execute(self.sql[72], (graph,)).fetchone()
-            cursor.execute(self.sql[73], (graph, next_vertex[0])).fetchone()
-            return next_vertex
-
-        def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
-            """"""
-            return cursor.execute(
-                self.sql[74], (graph, vertex[0], graph, vertex[0], graph)
-            ).fetchall()
-
-        def push(
-            adj_vertex: tuple, vertex: tuple, graph: str, cursor: object
-        ) -> None:
-            """"""
-            weight = cursor.execute(
-                self.sql[75],
-                (graph, adj_vertex[0], vertex[0], adj_vertex[0], vertex[0])
-            ).fetchone()
-            if weight is None:
-                raise Exception("no weight?")
-            if adj_vertex[3] == 0 and adj_vertex[2] > weight[0]:
-                cursor.execute(
-                    self.sql[76], (vertex[0], weight[0], adj_vertex[0])
-                )
-
-        start_vertex = self.cursor.execute(
-            self.sql[77], (start_vertex_id,)
-        ).fetchone()
-        if start_vertex is None:
-            raise Exception(f"edge '{start_vertex_id}' does not exist")
-
-        self.bf_base(
-            graph,
-            start_vertex,
-            enter=enter,
-            loop_condition=loop_condition,
-            pop=pop,
-            adjacency=adjacency,
-            push=push,
-        )
-
-    def single_source_shortest_path(
-        self: object, graph: str, start_vertex_id: int
-    ) -> bool:
-        """"""
-
-        def enter(vertex: tuple, graph: str, cursor: object) -> None:
-            """"""
-
-            # check for immutability flags set
-            if self.check_mode(graph, VEIM, EDIM):
-                raise Exception(
-                    f"cannot alter vertices/edges/cycles of '{graph}'"
-                )
-
-            # initialize all edges
-            cursor.execute(self.sql[78], (math.inf, graph))
-            cursor.execute(self.sql[79], (vertex[0],))
-
-        def loop_condition(graph: str, cursor: object) -> bool:
-            """"""
-            return 0 < cursor.execute(self.sql[80], (graph,)).fetchone()[0]
-
-        def pop(graph: str, cursor: object) -> tuple:
-            """"""
-            next_vertex = cursor.execute(self.sql[81], (graph,)).fetchone()
-            cursor.execute(self.sql[82], (graph, next_vertex[0])).fetchone()
-            return next_vertex
-
-        def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
-            """"""
-            return cursor.execute(self.sql[83], (graph, vertex[0])).fetchall()
-
-        def push(
-            adj_vertex: tuple, vertex: tuple, graph: str, cursor: object
-        ) -> None:
-            """"""
-            weight = cursor.execute(
-                self.sql[84], (graph, vertex[0], adj_vertex[0])
-            ).fetchone()
-            if weight is None:
-                raise Exception("no weight!")
-            if adj_vertex[2] > vertex[2] + weight[0]:
-                cursor.execute(
-                    self.sql[85],
-                    (vertex[0], vertex[2] + weight[0], adj_vertex[0])
-                )
-
-        start_vertex = self.cursor.execute(
-            self.sql[86], (start_vertex_id,)
-        ).fetchone()
-        if start_vertex is None:
-            raise Exception(f"edge '{start_vertex_id}' does not exist")
-
-        self.bf_base(
-            graph,
-            start_vertex,
-            enter=enter,
-            loop_condition=loop_condition,
-            pop=pop,
-            adjacency=adjacency,
-            push=push,
-        )
-
-    def flow_network_walk_vbf(self: object, graph: str, start_vertex_id: int) -> None:
-        """"""
-
-        def enter(vertex: tuple, graph: str, cursor: object) -> None:
-            """"""
-
-            # check for immutability flags set
-            if self.check_mode(graph, VEIM, EDIM):
-                raise Exception(
-                    f"cannot alter vertices/edges of '{graph}'"
-                )
-
-            # initialize all edges
-            cursor.execute(
-                """
-                UPDATE vertex
-                SET
-                    predecessor = NULL,
-                    bf_distance = ?,
-                    pushed = NULL
-                WHERE graph_id = ?
-                """,
-                (math.inf, graph),
-            )
-            cursor.execute(
-                "UPDATE vertex SET pushed = 1 WHERE id = ?", (vertex[0],)
+        # check for immutability flags set
+        if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
+            raise Exception(
+                f"cannot alter vertices/edges/cycles/cycle edges of '{graph}'"
             )
 
-        def loop_condition(graph: str, cursor: object) -> bool:
-            """"""
-            # vbf_search: pushed is not null
-            # ebf_search: pushed > 0
-            return 0 < cursor.execute(
-                """
-                SELECT
-                    COUNT(*)
-                FROM
-                    vertex AS v
-                INNER JOIN edge AS e
-                    ON v.id = e.parent_vertex_id
-                WHERE
-                    v.graph_id = ?
-                    AND v.pushed > 0
-                    AND v.id = e.child_vertex_id
-                    --AND e.mf_capacity > e.mf_flow
-                    --AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
+        # reset the vertices
+        self.cursor.execute(
+            """
+            UPDATE vertex
+            SET
+                tree = NULL,
+                color = 0,
+                predecessor = NULL,
+                bf_distance = ?,
+                pushed = NULL
+            WHERE graph_id = ?
+            """,
+            (math.inf, graph),
+        )
+
+        # initialize queue order paramter
+        pushed = 0
+
+        # fetch start vertex
+        s = self.cursor.execute(
+            """
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE graph_id = ? AND id = ?
+                LIMIT 1
                 """,
+            (graph, source_vertex_id),
+        ).fetchone()
+        if s is None:
+            raise Exception(
+                f"vertex with id '{source_vertex_id}' not part of {graph}"
+            )
+
+        # push the vertex to start
+        self.cursor.execute(
+            """
+            UPDATE
+                vertex
+            SET
+                color = 1,
+                predecessor = NULL,
+                bf_distance = 0,
+                pushed = ?
+            WHERE
+                graph_id = ? AND id = ?
+            """,
+            (pushed, graph, s[0]),
+        )
+
+        # while there are vertices to handle
+        while (
+            0
+            < self.cursor.execute(
+                """
+            SELECT COUNT(*)
+            FROM vertex
+            WHERE graph_id = ? AND pushed IS NOT NULL
+            """,
                 (graph,),
             ).fetchone()[0]
-        
-        def pop(graph: str, cursor: object) -> tuple:
-            """"""
-            next_vertex = cursor.execute(
+        ):
+
+            # fetch and dequeue the next vertex
+            u = self.cursor.execute(
                 """
-                SELECT
-                    v.id,
-                    v.predecessor,
-                    v.bf_distance,
-                    v.pushed
-                FROM
-                    vertex AS v
-                INNER JOIN edge AS e
-                    ON v.id = e.parent_vertex_id
-                WHERE
-                    v.graph_id = ?
-                    AND v.pushed > 0
-                    AND v.id = e.child_vertex_id
-                    --AND e.mf_capacity > e.mf_flow
-                    --AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-                ORDER BY v.pushed ASC
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE graph_id = ? AND pushed IS NOT NULL
+                ORDER BY pushed ASC
                 LIMIT 1
                 """,
                 (graph,),
             ).fetchone()
-            cursor.execute(
-                """
-                UPDATE vertex
-                SET pushed = -1 * pushed
-                WHERE id = ?
-                """,
-                (next_vertex[0],),
-            )
-            return next_vertex
-
-        def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
-            """"""
-            x = cursor.execute(
-                """
-                SELECT
-                    v.id,
-                    v.predecessor,
-                    v.bf_distance,
-                    v.pushed
-                FROM
-                    vertex AS v
-                INNER JOIN edge AS e
-                    ON v.id = e.parent_vertex_id
-                WHERE
-                    e.parent_vertex_id = ?
-                    AND v.id = e.child_vertex_id
-                    AND v.pushed IS NULL
-                    --AND e.mf_capacity > e.mf_flow
-                    --AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-                """,
-                (vertex[0],)
-            ).fetchall()
-            print("vertex", vertex)
-            for y in x: print(y)
-            print("================")
-            return x
-
-        def push(
-            adj_vertex: tuple, vertex: tuple, graph: str, cursor: object
-        ) -> None:
-            """"""
             self.cursor.execute(
                 """
-                UPDATE
-                    vertex
-                SET
-                    predecessor = ?,
-                    bf_distance = ?,
-                    pushed = (
-                        SELECT COALESCE(MAX(pushed), 0) + 1 FROM vertex WHERE graph_id = ?
-                    )
-                WHERE
-                    id = ?
+                UPDATE vertex
+                SET color = 2, pushed = NULL
+                WHERE id = ?
                 """,
-                (vertex[0], vertex[1] + 1, graph, adj_vertex[0]),
+                (u[0],),
             )
 
-        # fetch start edge data
-        start_vertex = self.cursor.execute(
-            """
-            SELECT id, predecessor, bf_distance, pushed
-            FROM vertex
-            WHERE id = ?
-            """,
-            (start_vertex_id,)
-        ).fetchone()
-        if start_vertex is None:
-            raise Exception(f"vertex '{start_vertex_id}' does not exist")
+            # break early at sink
+            if u[0] == sink_vertex_id:
+                break
 
-        self.bf_base(
-            graph,
-            start_vertex,
-            enter=enter,
-            loop_condition=loop_condition,
-            pop=pop,
-            adjacency=adjacency,
-            push=push
-        )
+            # handle its descendents bf
+            for v in self.cursor.execute(
+                """
+                SELECT id, tree, color, predecessor, bf_distance, pushed
+                FROM vertex
+                WHERE id IN (
+                    SELECT e.child_vertex_id
+                    FROM edge AS e
+                    WHERE parent_vertex_id = ?
+                    AND e.mf_capacity > e.mf_flow
+                    AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
+                )
+                AND pushed IS NULL
+                AND color = 0
+                """,
+                (u[0],),
+            ).fetchall():
 
-    # def flow_network_walk_vbf(
-    #     self: object, graph: str, start_vertex_id: int
-    # ) -> None:
-    #     """"""
+                pushed += 1
 
-    #     # check for immutability flags set
-    #     if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
-    #         raise Exception(
-    #             f"cannot alter vertices/edges/cycles/cycle edges of '{graph}'"
-    #         )
+                self.cursor.execute(
+                    """
+                    UPDATE
+                        vertex
+                    SET
+                        color = 1,
+                        predecessor = ?,
+                        bf_distance = ?,
+                        pushed = ?
+                    WHERE
+                        graph_id = ? AND id = ?
+                    """,
+                    (u[0], u[4] + 1, pushed, graph, v[0]),
+                )
 
-    #     # reset the vertices
-    #     self.cursor.execute(
-    #         """
-    #         UPDATE vertex
-    #         SET
-    #             tree = NULL,
-    #             color = 0,
-    #             predecessor = NULL,
-    #             bf_distance = ?,
-    #             pushed = NULL
-    #         WHERE graph_id = ?
-    #         """,
-    #         (math.inf, graph),
-    #     )
-
-    #     # initialize queue order paramter
-    #     pushed = 0
-
-    #     # fetch start vertex
-    #     s = self.cursor.execute(
-    #         """
-    #             SELECT id, tree, color, predecessor, bf_distance, pushed
-    #             FROM vertex
-    #             WHERE graph_id = ? AND id = ?
-    #             LIMIT 1
-    #             """,
-    #         (graph, start_vertex_id),
-    #     ).fetchone()
-    #     if s is None:
-    #         raise Exception(
-    #             f"vertex with id '{start_vertex_id}' not part of {graph}"
-    #         )
-
-    #     # push the vertex to start
-    #     self.cursor.execute(
-    #         """
-    #         UPDATE
-    #             vertex
-    #         SET
-    #             color = 1,
-    #             predecessor = NULL,
-    #             bf_distance = 0,
-    #             pushed = ?
-    #         WHERE
-    #             graph_id = ? AND id = ?
-    #         """,
-    #         (pushed, graph, s[0]),
-    #     )
-
-    #     # while there are vertices to handle
-    #     while (
-    #         self.cursor.execute(
-    #             """
-    #             SELECT COUNT(v.id)
-    #             FROM vertex AS v
-    #             INNER JOIN edge AS e
-    #                 ON v.id = e.parent_vertex_id
-    #             WHERE
-    #                 v.graph_id = ?
-    #                 AND e.child_vertex_id = v.id
-    #                 AND v.pushed IS NOT NULL
-    #                 AND e.mf_capacity > e.mf_flow
-    #             """,
-    #             (graph,),
-    #         ).fetchone()[0]
-    #         > 0
-    #     ):
-
-    #         # fetch and dequeue the next vertex
-    #         u = self.cursor.execute(
-    #             """
-    #             SELECT id, tree, color, predecessor, bf_distance, pushed
-    #             FROM vertex
-    #             WHERE graph_id = ? AND pushed IS NOT NULL
-    #             ORDER BY pushed ASC
-    #             LIMIT 1
-    #             """,
-    #             (graph,),
-    #         ).fetchone()
-    #         self.cursor.execute(
-    #             """
-    #             UPDATE vertex
-    #             SET color = 2, pushed = NULL
-    #             WHERE id = ?
-    #             """,
-    #             (u[0],),
-    #         )
-
-    #         # handle its descendents bf
-    #         for v in self.cursor.execute(
-    #             """
-    #             SELECT id, tree, color, predecessor, bf_distance, pushed
-    #             FROM vertex
-    #             WHERE id IN (
-    #                 SELECT child_vertex_id
-    #                 FROM edge
-    #                 WHERE parent_vertex_id = ?
-    #             )
-    #             UNION
-    #             SELECT id, tree, color, predecessor, bf_distance, pushed
-    #             FROM vertex
-    #             WHERE id IN (
-    #                 SELECT parent_vertex_id
-    #                 FROM edge
-    #                 WHERE child_vertex_id = ?
-    #             )
-    #             """,
-    #             2 * (u[0],),
-    #         ).fetchall():
-
-    #             if v[2] == Color.white:
-    #                 pushed += 1
-
-    #                 self.cursor.execute(
-    #                     """
-    #                     UPDATE
-    #                         vertex
-    #                     SET
-    #                         color = 1,
-    #                         predecessor = ?,
-    #                         bf_distance = ?,
-    #                         pushed = ?
-    #                     WHERE
-    #                         graph_id = ? AND id = ?
-    #                     """,
-    #                     (u[0], u[4] + 1, pushed, graph, v[0]),
-    #                 )
-
-    #     # cleanup
-    #     self.connection.commit()
+        # cleanup
+        self.connection.commit()
 
     def maximum_flow(
         self: object, graph: str, source_vertex_id: int, sink_vertex_id: int
@@ -2501,173 +2333,111 @@ class Database:
             "UPDATE edge SET mf_flow = 0 WHERE graph_id = ?", (graph,)
         )
 
-        # def generate_edges():
-        #     """"""
-        #     chunk_cursor = self.connection.execute(
-        #         """
-        #         SELECT
-        #             id,
-        #             parent_vertex_id,
-        #             child_vertex_id,
-        #             mf_capacity,
-        #             metadata,
-        #             CASE
-        #                 WHEN parent_vertex_id < child_vertex_id
-        #                     THEN parent_vertex_id
-        #                 ELSE child_vertex_id
-        #             END AS v1,
-        #             CASE
-        #                 WHEN parent_vertex_id < child_vertex_id
-        #                     THEN child_vertex_id
-        #                 ELSE parent_vertex_id
-        #             END AS v2
-        #         FROM
-        #             edge
-        #         WHERE
-        #             graph_id = ?
-        #         ORDER BY
-        #             v1, v2, parent_vertex_id, child_vertex_id
-        #         """,
-        #         (graph,)
-        #     )
-        #     while (chunk := chunk_cursor.fetchone()) is not None:
-        #         yield chunk
+        def generate_edges():
+            """"""
+            chunk_cursor = self.connection.execute(
+                """
+                SELECT
+                    id,
+                    parent_vertex_id,
+                    child_vertex_id,
+                    mf_capacity,
+                    metadata,
+                    CASE
+                        WHEN parent_vertex_id < child_vertex_id
+                            THEN parent_vertex_id
+                        ELSE child_vertex_id
+                    END AS v1,
+                    CASE
+                        WHEN parent_vertex_id < child_vertex_id
+                            THEN child_vertex_id
+                        ELSE parent_vertex_id
+                    END AS v2
+                FROM
+                    edge
+                WHERE
+                    graph_id = ?
+                ORDER BY
+                    v1, v2, parent_vertex_id, child_vertex_id
+                """,
+                (graph,),
+            )
+            while (chunk := chunk_cursor.fetchone()) is not None:
+                yield chunk
 
-        # for _, edges in groupby(generate_edges(), lambda t: (t[5], t[6])):
-        #     edges = list(edges)
-            
-        #     # case: one edge between vertices, just add backflow edge
-        #     if len(edges) == 1:
-        #         _ = self.add_edges(
-        #             graph,
-        #             {
-        #                 "parent_vertex_id": edges[0][2],
-        #                 "child_vertex_id": edges[0][1],
-        #                 "mf_capacity": edges[0][3],
-        #                 "metadata": {"backflow": True}
-        #             }
-        #         )
-        #         continue
+        for _, edges in groupby(generate_edges(), lambda t: (t[5], t[6])):
+            edges = list(edges)
+            left_edges = [e for e in edges if e[5] < e[6]]
+            right_edges = [e for e in edges if e[5] >= e[6]]
 
-        #     # case: multiple edges between vertices, add backflow for
-        #     # set of edges with one directionality
-        #     for edge in (e for e in edges if e[1] < e[2]):
-        #         _ = self.add_edges(
-        #             graph,
-        #             {
-        #                 "parent_vertex_id": edge[2],
-        #                 "child_vertex_id": edge[1],
-        #                 "mf_capacity": edge[3],
-        #                 "metadata": {"backflow": True}
-        #             }
-        #         )
+            if not left_edges and not right_edges:
+                continue
 
-        #     # and break up antiparallel edges
-        #     for edge in (e for e in edges if e[1] >= e[2]):
-        #         vertex_id = self.add_vertices(graph, {"metadata": {"imaginary": True}})[0]
-        #         _ = self.add_edges(
-        #             graph,
-        #             {
-        #                 "parent_vertex_id": edge[1],
-        #                 "child_vertex_id": vertex_id,
-        #                 "mf_capacity": edge[3],
-        #                 "metadata": {"imaginary": True}
-        #             },
-        #             {
-        #                 "parent_vertex_id": vertex_id,
-        #                 "child_vertex_id": edge[2],
-        #                 "mf_capacity": edge[3],
-        #                 "metadata": {"backflow": True}
-        #             },
-        #             {
-        #                 "parent_vertex_id": vertex_id,
-        #                 "child_vertex_id": edge[1],
-        #                 "mf_capacity": edge[3],
-        #                 "metadata": {"imaginary": True}
-        #             },
-        #             {
-        #                 "parent_vertex_id": edge[2],
-        #                 "child_vertex_id": vertex_id,
-        #                 "mf_capacity": edge[3],
-        #                 "metadata": {"backflow": True}
-        #             },
-        #         )
-        #         self.alter_edge(
-        #             edge[0],
-        #             metadata=json.loads(edge[4] or "{}").update({"hiding": True})
-        #         )
-
-        
-        # set predecessor for each vertex
-        self.vbf_search(graph, source_vertex_id)
+            # split antiparallels
+            for edge in right_edges:
+                vertex_id = self.add_vertices(
+                    graph, {"metadata": {"imaginary": True}}
+                )[0]
+                _ = self.add_edges(
+                    graph,
+                    {
+                        "parent_vertex_id": edge[1],
+                        "child_vertex_id": vertex_id,
+                        "mf_capacity": 0,
+                        "metadata": {"imaginary": True},
+                    },
+                    {
+                        "parent_vertex_id": vertex_id,
+                        "child_vertex_id": edge[1],
+                        "mf_capacity": 0,
+                        "metadata": {"imaginary": True},
+                    },
+                )
+                self.alter_edge(
+                    edge[0],
+                    metadata=json.loads(edge[4] or "{}").update(
+                        {"hiding": True}
+                    ),
+                )
 
         # main loop
         while True:
-            for x in  self.cursor.execute(
+
+            # set predecessor for each vertex
+            self.flow_network_walk_vbf(graph, source_vertex_id, sink_vertex_id)
+
+            # evaluate path
+            path = self.cursor.execute(
                 """
                 WITH RECURSIVE
-    path_edges AS (
-        SELECT
-            e.id, e.mf_capacity, e.mf_flow, e.metadata, e.parent_vertex_id
-        FROM
-            edge AS e
-        WHERE
-            e.id = (
-                SELECT id
-                FROM edge
-                WHERE
-                    child_vertex_id = ?
-                    AND mf_flow < mf_capacity
-                    AND COALESCE(metadata, '') NOT LIKE '%"hiding" = true%'
-                LIMIT 1
-            )
-        UNION ALL
-        SELECT  e.id, e.mf_capacity, e.mf_flow, e.metadata, e.parent_vertex_id
-        FROM edge AS e
-        JOIN path_edges AS pe
-            ON pe.parent_vertex_id = e.child_vertex_id
-        WHERE
-            e.mf_flow < e.mf_capacity
-            AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-    )
-    SELECT id, mf_capacity, mf_flow, metadata FROm path_edges
+                    path_vertices AS (
+                        SELECT v.id, v.predecessor
+                        FROM vertex AS v
+                        WHERE id = ?
+                        UNION ALL
+                        SELECT v.id, v.predecessor
+                        FROM vertex AS v
+                        JOIN path_vertices AS pv
+                            ON v.id = pv.predecessor
+                        WHERE v.predecessor IS NOT NULL
+                    ),
+                    path_edges AS (
+                        SELECT e.id, e.mf_capacity, e.mf_flow, e.metadata
+                        FROM edge AS e
+                        JOIN path_vertices AS pv
+                            ON e.child_vertex_id = pv.id
+                            AND e.parent_vertex_id = pv.predecessor
+                    ),
+                    path_complete_flag AS (
+                        SELECT 1 FROM path_vertices WHERE predecessor = ?
+                    )
+                SELECT *
+                FROM path_edges
+                WHERE 1 IN (SELECT * FROM path_complete_flag)
                 """,
-                (sink_vertex_id,)
-            ).fetchall(): print(x)
-            # compute bottleneck capacity
-            # path = self.cursor.execute(
-            #     """
-            #     WITH RECURSIVE
-            #         path_edges AS (
-            #             SELECT
-            #                 e.id, e.mf_capacity, e.mf_flow, e.metadata, e.parent_vertex_id
-            #             FROM
-            #                 edge AS e
-            #             WHERE
-            #                 e.child_vertex_id = ?
-            #                 AND e.mf_flow < e.mf_capacity
-            #                 AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-            #             --LIMIT 1
-            #             UNION ALL
-            #             SELECT
-            #                 e.id, e.mf_capacity, e.mf_flow, e.metadata, e.parent_vertex_id
-            #             FROM
-            #                 edge AS e
-            #             JOIN
-            #                 path_edges AS pe
-            #                 ON pe.parent_vertex_id = e.child_vertex_id
-            #             WHERE
-            #                 e.mf_flow < e.mf_capacity
-            #                 AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-            #                 --AND e.parent_vertex_id = (SELECT predecessor FROM vertex WHERE id = ?)
-            #         )
-            #     SELECT id, mf_capacity, mf_flow, metadata
-            #     FROM path_edges
-            #     WHERE mf_flow < mf_capacity AND COALESCE(metadata, '') NOT LIKE '%"hiding" = true%'
-            #     """,
-            #     (sink_vertex_id,)
-            # ).fetchall()
-            path = None
+                (sink_vertex_id, source_vertex_id),
+            ).fetchall()
+
             # convergence (hopefully)
             if not path:
                 break
@@ -2677,45 +2447,10 @@ class Database:
 
             # update step
             for edge in path:
-                if edge[3] is None:
-                    f = edge[2] + path_residual_capcity
-                elif "imaginary" in edge[3]:
-                    f = edge[2] + path_residual_capcity
-                elif "backflow" in edge[3]:
+                if edge[1] - edge[2] == 0:
                     f = edge[2] - path_residual_capcity
                 else:
-                    continue
+                    f = edge[2] + path_residual_capcity
                 self.cursor.execute(
                     "UPDATE edge SET mf_flow = ? WHERE id = ?", (f, edge[0])
                 )
-        
-        # # remove imaginary edges and revert antiparallels
-        # self.cursor.execute(
-        #     """
-        #     UPDATE edge AS e
-        #     SET e.mf_flow = (
-        #         SELECT (e1.mf_flow + e2.mf_flow) / 2
-        #         FROM edge AS e1
-        #         INNER JOIN edge AS e2
-        #             ON e2.parent_vertex_id = e1.child_vertex_id
-        #         WHERE e2.child_vertex_id = e.child_vertex_id AND e1.parent_vertex_id = e.parent_vertex_id
-        #     )
-        #     WHERE e.graph_id = ? AND e.metadata LIKE '%"hiding" = true%'
-        #     """,
-        #     (graph,)
-        # )
-        # self.cursor.execute(
-        #     "DELETE FROM edge WHERE graph_id = ? AND metadata LIKE '%backflow%' OR metadata LIKE '%imaginary%'",
-        #     (graph,)
-        # )
-        # self.cursor.execute(
-        #     "DELETE FROM vertex WHERE graph_id = ? AND metadata LIKE '%imaginary%'",
-        #     (graph,)
-        # )
-        # for edge in generate_edges():
-        #     metadata = json.loads(edge[4])
-        #     if "hiding" in metadata:
-        #         self.cursor.execute(
-        #             "UPDATE edge SET metadata = ? WHERE id = ?",
-        #             (json.dumps({k: v for k, v in metadata.items() if k != "hiding"}), edge[0])
-        #         )
