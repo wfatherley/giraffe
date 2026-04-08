@@ -970,6 +970,267 @@ class Database:
         FROM vertex
         WHERE id = {id!i:1}
         """,  # 86
+        """
+        UPDATE vertex
+        SET
+            tree = NULL,
+            color = 0,
+            predecessor = NULL,
+            bf_distance = {bf_distance!i:1},
+            pushed = NULL
+        WHERE graph_id = {graph_id!s:2}
+        """, # 87
+        """
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND id = {id!i:2}
+        LIMIT 1
+        """, # 88
+        """
+        UPDATE
+            vertex
+        SET
+            color = 1,
+            predecessor = NULL,
+            bf_distance = 0,
+            pushed = {pushed!i:1}
+        WHERE
+            graph_id = {graph_id!s:2} AND id = {id!i:3}
+        """, # 89
+        """
+        SELECT COUNT(*)
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
+        """, # 90
+        """
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
+        ORDER BY pushed ASC
+        LIMIT 1
+        """, # 91
+        """
+        UPDATE vertex
+        SET color = 2, pushed = NULL
+        WHERE id = {id!i:1}
+        """, # 92
+        """
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE id IN (
+            SELECT child_vertex_id
+            FROM edge
+            WHERE parent_vertex_id = {parent_vertex_id!i:1}
+        )
+        UNION
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE id IN (
+            SELECT parent_vertex_id
+            FROM edge
+            WHERE child_vertex_id = {child_vertex_id!i:2}
+        )
+        """, # 93
+        """
+        UPDATE
+            vertex
+        SET
+            color = 1,
+            predecessor = {predecessor!i:1},
+            bf_distance = {bf_distance!i:2},
+            pushed = ?
+        WHERE
+            graph_id = {graph_id!s:3} AND id = {id!i:4}
+        """, # 94
+        """
+        UPDATE vertex
+        SET
+            tree = NULL,
+            color = 0,
+            predecessor = NULL,
+            bf_distance = {bf_distance!i:1},
+            pushed = NULL
+        WHERE graph_id = {graph_id!s:2}
+        """, # 95
+        """
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND id = {id!i:2}
+        LIMIT 1
+        """, # 96
+        """
+        UPDATE
+            vertex
+        SET
+            color = 1,
+            predecessor = NULL,
+            bf_distance = 0,
+            pushed = {pushed!i:1}
+        WHERE
+            graph_id = {graph_id!s:2} AND id = {id!i:3}
+        """, # 97
+        """
+        SELECT COUNT(*)
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
+        """, # 98
+        """
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
+        ORDER BY pushed ASC
+        LIMIT 1
+        """, # 99
+        """
+        UPDATE vertex
+        SET color = 2, pushed = NULL
+        WHERE id = {id!i:1}
+        """, # 100
+        """
+        SELECT id, tree, color, predecessor, bf_distance, pushed
+        FROM vertex
+        WHERE id IN (
+            SELECT e.child_vertex_id
+            FROM edge AS e
+            WHERE parent_vertex_id = {parent_vertex_id!i:1}
+            AND e.mf_capacity > e.mf_flow
+            AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
+        )
+        AND pushed IS NULL
+        AND color = 0
+        """, # 101
+        """
+        UPDATE
+            vertex
+        SET
+            color = 1,
+            predecessor = {predecessor!i:1},
+            bf_distance = {bf_distance!i:2},
+            pushed = {pushed!i:3}
+        WHERE
+            graph_id = {graph_id!i:4} AND id = {id!i:5}
+        """, # 102
+        "UPDATE edge SET mf_flow = 0 WHERE graph_id = {graph_id!s:1}", # 103
+        """
+        SELECT
+            id,
+            parent_vertex_id,
+            child_vertex_id,
+            mf_capacity,
+            metadata,
+            CASE
+                WHEN parent_vertex_id < child_vertex_id
+                    THEN parent_vertex_id
+                ELSE child_vertex_id
+            END AS v1,
+            CASE
+                WHEN parent_vertex_id < child_vertex_id
+                    THEN child_vertex_id
+                ELSE parent_vertex_id
+            END AS v2
+        FROM
+            edge
+        WHERE
+            graph_id = {graph_id!s:1}
+        ORDER BY
+            v1, v2, parent_vertex_id, child_vertex_id
+        """, # 104
+        """
+        WITH RECURSIVE
+            path_vertices AS (
+                SELECT v.id, v.predecessor
+                FROM vertex AS v
+                WHERE id = {id!i:1}
+                UNION ALL
+                SELECT v.id, v.predecessor
+                FROM vertex AS v
+                JOIN path_vertices AS pv
+                    ON v.id = pv.predecessor
+                WHERE v.predecessor IS NOT NULL
+            ),
+            path_edges AS (
+                SELECT e.id, e.mf_capacity, e.mf_flow, e.metadata
+                FROM edge AS e
+                JOIN path_vertices AS pv
+                    ON e.child_vertex_id = pv.id
+                    AND e.parent_vertex_id = pv.predecessor
+            ),
+            path_complete_flag AS (
+                SELECT 1
+                FROM path_vertices
+                WHERE predecessor = {predecessor!i:2}
+            )
+        SELECT *
+        FROM path_edges
+        WHERE 1 IN (SELECT * FROM path_complete_flag)
+        """, # 105
+        "UPDATE edge SET mf_flow = {mf_flow!f:1} WHERE id = {id!i:2}", # 106
+        """
+        UPDATE vertex
+        SET color = 0, pushed = NULL, popped = NULL
+        WHERE graph_id = {graph_id!s:1}
+        """, # 107
+        "SELECT id FROM vertex WHERE graph_id = {graph_di!s:1}", # 108
+        """
+        UPDATE vertex
+        SET color = 1, pushed = {pushed!i:1}, tree = {tree!i:2}
+        WHERE graph_id = {graph_id!s:3} AND id = {id!i:4} AND color = 0
+        RETURNING id, tree, color, pushed, graph_id
+        """, # 109
+        """
+        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+        FROM vertex AS v
+        INNER JOIN edge AS e
+            ON e.child_vertex_id = v.id
+        WHERE
+            v.color = 0
+            AND e.parent_vertex_id = {parent_vertex_id!i:1}
+            AND v.graph_id = {graph_id!s:2}
+        """, # 110
+        """
+        SELECT COUNT(*)
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND tree = {tree!i:2} AND color = 1
+        """, # 111
+        """
+        UPDATE vertex
+        SET color = 1, pushed = {pushed!i:1}, tree = {tree!i:2}
+        WHERE id = {id!i:3}
+        """, # 112
+        """
+        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+        FROM vertex AS v
+        INNER JOIN edge AS e
+            ON e.child_vertex_id = v.id
+        WHERE
+            v.color = 0
+            AND e.parent_vertex_id = {parent_vertex_id!i:1}
+            AND v.graph_id = {graph_id!s:2}
+        """, # 113
+        """
+        UPDATE vertex
+        SET color = 2, popped = {popped!i:1}
+        WHERE id = {id!i:2}
+        """, # 114
+        """
+        SELECT id, tree, color, pushed, graph_id
+        FROM vertex
+        WHERE graph_id = {graph_id!s:1} AND pushed = (
+            SELECT MAX(pushed)
+            FROM vertex
+            WHERE tree = {tree!i:2} AND color = 1
+        )
+        """, # 115
+        """
+        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+        FROM vertex AS v
+        INNER JOIN edge AS e
+            ON e.child_vertex_id = v.id
+        WHERE
+            v.color = 0
+            AND e.parent_vertex_id = {parent_vertex_id!i:1}
+            AND v.graph_id = {graph_id!s:2}
+        """, # 116
     ]
 
     model = sql[0]
@@ -2044,17 +2305,7 @@ class Database:
 
         # reset the vertices
         self.cursor.execute(
-            """
-            UPDATE vertex
-            SET
-                tree = NULL,
-                color = 0,
-                predecessor = NULL,
-                bf_distance = ?,
-                pushed = NULL
-            WHERE graph_id = ?
-            """,
-            (math.inf, graph),
+            self.sql[87], (math.inf, graph)
         )
 
         # initialize queue order paramter
@@ -2062,13 +2313,7 @@ class Database:
 
         # fetch start vertex
         s = self.cursor.execute(
-            """
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE graph_id = ? AND id = ?
-                LIMIT 1
-                """,
-            (graph, start_vertex_id),
+            self.sql[88], (graph, start_vertex_id)
         ).fetchone()
         if s is None:
             raise Exception(
@@ -2077,79 +2322,23 @@ class Database:
 
         # push the edge to start
         hooks.get("before_enqueue", lambda x, y: None)(s, self.cursor)
-        self.cursor.execute(
-            """
-            UPDATE
-                vertex
-            SET
-                color = 1,
-                predecessor = NULL,
-                bf_distance = 0,
-                pushed = ?
-            WHERE
-                graph_id = ? AND id = ?
-            """,
-            (pushed, graph, s[0]),
-        )
+        self.cursor.execute(self.sql[89], (pushed, graph, s[0]))
         hooks.get("after_enqueue", lambda x, y: None)(
             s[:4] + (pushed,), self.cursor
         )
 
         # while there are vertices to handle
-        while (
-            self.cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM vertex
-                WHERE graph_id = ? AND pushed IS NOT NULL
-                """,
-                (graph,),
-            ).fetchone()[0]
-            > 0
-        ):
+        while 0 < self.cursor.execute(self.sql[90], (graph,)).fetchone()[0]:
 
             # fetch and dequeue the next vertex
             hooks.get("before_dequeue", lambda x: None)(self.cursor)
-            u = self.cursor.execute(
-                """
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE graph_id = ? AND pushed IS NOT NULL
-                ORDER BY pushed ASC
-                LIMIT 1
-                """,
-                (graph,),
-            ).fetchone()
-            self.cursor.execute(
-                """
-                UPDATE vertex
-                SET color = 2, pushed = NULL
-                WHERE id = ?
-                """,
-                (u[0],),
-            )
+            u = self.cursor.execute(self.sql[91], (graph,)).fetchone()
+            self.cursor.execute(self.sql[92], (u[0],))
             hooks.get("after_dequeue", lambda x, y: None)(u, self.cursor)
 
             # handle its descendents bf
             for v in self.cursor.execute(
-                """
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE id IN (
-                    SELECT child_vertex_id
-                    FROM edge
-                    WHERE parent_vertex_id = ?
-                )
-                UNION
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE id IN (
-                    SELECT parent_vertex_id
-                    FROM edge
-                    WHERE child_vertex_id = ?
-                )
-                """,
-                2 * (u[0],),
+                self.sql[93], (u[0], u[0])
             ).fetchall():
 
                 # adjacency hook
@@ -2165,18 +2354,7 @@ class Database:
                         v, self.cursor
                     )
                     self.cursor.execute(
-                        """
-                        UPDATE
-                            vertex
-                        SET
-                            color = 1,
-                            predecessor = ?,
-                            bf_distance = ?,
-                            pushed = ?
-                        WHERE
-                            graph_id = ? AND id = ?
-                        """,
-                        (u[0], u[4] + 1, pushed, graph, v[0]),
+                        self.sql[94], (u[0], u[4] + 1, pushed, graph, v[0])
                     )
                     hooks.get("after_enqueue", lambda x, y: None)(
                         v[:4] + (pushed,), self.cursor
@@ -2198,32 +2376,14 @@ class Database:
             )
 
         # reset the vertices
-        self.cursor.execute(
-            """
-            UPDATE vertex
-            SET
-                tree = NULL,
-                color = 0,
-                predecessor = NULL,
-                bf_distance = ?,
-                pushed = NULL
-            WHERE graph_id = ?
-            """,
-            (math.inf, graph),
-        )
+        self.cursor.execute(self.sql[95], (math.inf, graph))
 
         # initialize queue order paramter
         pushed = 0
 
         # fetch start vertex
         s = self.cursor.execute(
-            """
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE graph_id = ? AND id = ?
-                LIMIT 1
-                """,
-            (graph, source_vertex_id),
+            self.sql[96], (graph, source_vertex_id)
         ).fetchone()
         if s is None:
             raise Exception(
@@ -2232,90 +2392,28 @@ class Database:
 
         # push the vertex to start
         self.cursor.execute(
-            """
-            UPDATE
-                vertex
-            SET
-                color = 1,
-                predecessor = NULL,
-                bf_distance = 0,
-                pushed = ?
-            WHERE
-                graph_id = ? AND id = ?
-            """,
+            self.sql[97],
             (pushed, graph, s[0]),
         )
 
         # while there are vertices to handle
-        while (
-            0
-            < self.cursor.execute(
-                """
-            SELECT COUNT(*)
-            FROM vertex
-            WHERE graph_id = ? AND pushed IS NOT NULL
-            """,
-                (graph,),
-            ).fetchone()[0]
-        ):
+        while 0 < self.cursor.execute(self.sql[98], (graph,)).fetchone()[0]:
 
             # fetch and dequeue the next vertex
-            u = self.cursor.execute(
-                """
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE graph_id = ? AND pushed IS NOT NULL
-                ORDER BY pushed ASC
-                LIMIT 1
-                """,
-                (graph,),
-            ).fetchone()
-            self.cursor.execute(
-                """
-                UPDATE vertex
-                SET color = 2, pushed = NULL
-                WHERE id = ?
-                """,
-                (u[0],),
-            )
+            u = self.cursor.execute(self.sql[99], (graph,)).fetchone()
+            self.cursor.execute(self.sql[100], (u[0],))
 
             # break early at sink
             if u[0] == sink_vertex_id:
                 break
 
             # handle its descendents bf
-            for v in self.cursor.execute(
-                """
-                SELECT id, tree, color, predecessor, bf_distance, pushed
-                FROM vertex
-                WHERE id IN (
-                    SELECT e.child_vertex_id
-                    FROM edge AS e
-                    WHERE parent_vertex_id = ?
-                    AND e.mf_capacity > e.mf_flow
-                    AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-                )
-                AND pushed IS NULL
-                AND color = 0
-                """,
-                (u[0],),
-            ).fetchall():
+            for v in self.cursor.execute(self.sql[101], (u[0],)).fetchall():
 
                 pushed += 1
 
                 self.cursor.execute(
-                    """
-                    UPDATE
-                        vertex
-                    SET
-                        color = 1,
-                        predecessor = ?,
-                        bf_distance = ?,
-                        pushed = ?
-                    WHERE
-                        graph_id = ? AND id = ?
-                    """,
-                    (u[0], u[4] + 1, pushed, graph, v[0]),
+                    self.sql[102], (u[0], u[4] + 1, pushed, graph, v[0])
                 )
 
         # cleanup
@@ -2332,38 +2430,12 @@ class Database:
 
         # set flows to zero
         self.cursor.execute(
-            "UPDATE edge SET mf_flow = 0 WHERE graph_id = ?", (graph,)
+            self.sql[103], (graph,)
         )
 
         def generate_edges():
             """"""
-            chunk_cursor = self.connection.execute(
-                """
-                SELECT
-                    id,
-                    parent_vertex_id,
-                    child_vertex_id,
-                    mf_capacity,
-                    metadata,
-                    CASE
-                        WHEN parent_vertex_id < child_vertex_id
-                            THEN parent_vertex_id
-                        ELSE child_vertex_id
-                    END AS v1,
-                    CASE
-                        WHEN parent_vertex_id < child_vertex_id
-                            THEN child_vertex_id
-                        ELSE parent_vertex_id
-                    END AS v2
-                FROM
-                    edge
-                WHERE
-                    graph_id = ?
-                ORDER BY
-                    v1, v2, parent_vertex_id, child_vertex_id
-                """,
-                (graph,),
-            )
+            chunk_cursor = self.connection.execute(self.sql[104], (graph,))
             while (chunk := chunk_cursor.fetchone()) is not None:
                 yield chunk
 
@@ -2410,34 +2482,7 @@ class Database:
 
             # evaluate path
             path = self.cursor.execute(
-                """
-                WITH RECURSIVE
-                    path_vertices AS (
-                        SELECT v.id, v.predecessor
-                        FROM vertex AS v
-                        WHERE id = ?
-                        UNION ALL
-                        SELECT v.id, v.predecessor
-                        FROM vertex AS v
-                        JOIN path_vertices AS pv
-                            ON v.id = pv.predecessor
-                        WHERE v.predecessor IS NOT NULL
-                    ),
-                    path_edges AS (
-                        SELECT e.id, e.mf_capacity, e.mf_flow, e.metadata
-                        FROM edge AS e
-                        JOIN path_vertices AS pv
-                            ON e.child_vertex_id = pv.id
-                            AND e.parent_vertex_id = pv.predecessor
-                    ),
-                    path_complete_flag AS (
-                        SELECT 1 FROM path_vertices WHERE predecessor = ?
-                    )
-                SELECT *
-                FROM path_edges
-                WHERE 1 IN (SELECT * FROM path_complete_flag)
-                """,
-                (sink_vertex_id, source_vertex_id),
+                self.sql[105], (sink_vertex_id, source_vertex_id)
             ).fetchall()
 
             # convergence (hopefully)
@@ -2453,9 +2498,7 @@ class Database:
                     f = edge[2] - path_residual_capcity
                 else:
                     f = edge[2] + path_residual_capcity
-                self.cursor.execute(
-                    "UPDATE edge SET mf_flow = ? WHERE id = ?", (f, edge[0])
-                )
+                self.cursor.execute(self.sql[106], (f, edge[0]))
 
         # commit and return
         self.connection.commit()
@@ -2474,20 +2517,10 @@ class Database:
 
         # initialization
         current_time = 0
-        self.cursor.execute(
-            """
-            UPDATE vertex
-            SET color = 0, pushed = NULL, popped = NULL
-            WHERE graph_id = ?
-            """,
-            (graph,)
-        )
+        self.cursor.execute(self.sql[107], (graph,))
 
         # vertex ids can be used as a tree ids
-        trees_cursor = self.connection.execute(
-            "SELECT id FROM vertex WHERE graph_id = ?",
-            (graph,)
-        )
+        trees_cursor = self.connection.execute(self.sql[108], (graph,))
         while (tree := trees_cursor.fetchone()) is not None:
             tree = tree[0]
 
@@ -2496,13 +2529,7 @@ class Database:
                 None, None, self.cursor
             )
             vertex = self.cursor.execute(
-                """
-                UPDATE vertex
-                SET color = 1, pushed = ?, tree = ?
-                WHERE graph_id = ? AND id = ? AND color = 0
-                RETURNING id, tree, color, pushed, graph_id
-                """,
-                (current_time, tree, graph, tree)
+                self.sql[109], (current_time, tree, graph, tree)
             ).fetchone()
 
             # vertex with id 'tree' was not white
@@ -2511,24 +2538,12 @@ class Database:
 
             # fetch vertices growing off current vertex
             branch_tips = self.cursor.execute(
-                """
-                SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-                FROM vertex AS v
-                INNER JOIN edge AS e
-                    ON e.child_vertex_id = v.id
-                WHERE v.color = 0 AND e.parent_vertex_id = ? AND v.graph_id = ?
-                """,
-                (vertex[0], graph)
+                self.sql[110], (vertex[0], graph)
             ).fetchall()
 
             # compute stack height to use below as break condition
             tree_size = self.cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM vertex
-                WHERE graph_id = ? AND tree = ? AND color = 1
-                """,
-                (graph, tree)
+                self.sql[111], (graph, tree)
             ).fetchone()[0]
 
             # new tree created, trigger hook
@@ -2544,8 +2559,6 @@ class Database:
 
             # while the stack is not empty
             while tree_size > 0:
-                # if vertex[0] == 4:
-                #     breakpoint()
                     
                 # handle any possible cycles
                 hooks.get("iteration_begin", lambda v, w, x, y, z: None)(
@@ -2565,24 +2578,12 @@ class Database:
                         vertex, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        """
-                        UPDATE vertex
-                        SET color = 1, pushed = ?, tree = ?
-                        WHERE id = ?
-                        """,
-                        (current_time, tree, vertex[0])
+                        self.sql[112], (current_time, tree, vertex[0])
                     )
 
                     # fetch vertices growing off current vertex
                     branch_tips = self.cursor.execute(
-                        """
-                        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-                        FROM vertex AS v
-                        INNER JOIN edge AS e
-                            ON e.child_vertex_id = v.id
-                        WHERE v.color = 0 AND e.parent_vertex_id = ? AND v.graph_id = ?
-                        """,
-                        (vertex[0], graph)
+                        self.sql[113], (vertex[0], graph)
                     ).fetchall()
                     hooks.get("after_push", lambda x, y, z: None)(
                         vertex, branch_tips, self.cursor
@@ -2600,7 +2601,7 @@ class Database:
                     hooks.get("before_pop", lambda x, y, z: None)(
                         vertex, branch_tips, self.cursor
                     )
-                    self.cursor.execute("UPDATE vertex SET color = 2, popped = ? WHERE id = ?", (current_time, vertex[0]))
+                    self.cursor.execute(self.sql[114], (current_time, vertex[0]))
                     current_time += 1
                     tree_size -= 1
 
@@ -2610,27 +2611,12 @@ class Database:
 
                     # set vertex to new stack top
                     vertex = self.cursor.execute(
-                        """
-                        SELECT id, tree, color, pushed, graph_id
-                        FROM vertex
-                        WHERE graph_id = ? AND pushed = (
-                            SELECT MAX(pushed)
-                            FROM vertex
-                            WHERE tree = ? AND color = 1
-                        )
-                        """, (graph, tree)
+                        self.sql[115], (graph, tree)
                     ).fetchone()
 
                     # ask stack top for its branch tips
                     branch_tips = self.cursor.execute(
-                        """
-                        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-                        FROM vertex AS v
-                        INNER JOIN edge AS e
-                            ON e.child_vertex_id = v.id
-                        WHERE v.color = 0 AND e.parent_vertex_id = ? AND v.graph_id = ?
-                        """,
-                        (vertex[0], graph)
+                        self.sql[116], (vertex[0], graph)
                     ).fetchall()
                     hooks.get("after_pop", lambda x, y, z: None)(
                         vertex, branch_tips, self.cursor
