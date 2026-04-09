@@ -14,7 +14,7 @@ class TestModel(unittest.TestCase):
     def test_executes_with_sqlite3(self):
         """"""
         con = sqlite3.connect(":memory:", autocommit=False)
-        for relation in giraffe.Database.sql[0].split(";"):
+        for relation in giraffe.Database.sql["model"].split(";"):
             con.execute(relation)
         con.commit()
         con.close()

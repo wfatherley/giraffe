@@ -135,1107 +135,7 @@ class Database:
         the connection's ``paramstyle`` attribute.
     """
 
-    sql = [
-        """
-        CREATE TABLE graph(
-
-            id TEXT NOT NULL,
-
-            directed INT NOT NULL,
-            acyclic INT,
-            metadata TEXT,
-            mode int DEFAULT 0,
-
-            PRIMARY KEY (id)
-        );
-
-
-        CREATE TABLE vertex(
-
-            id INT PRIMARY KEY,
-            predecessor INT REFERENCES vertex(id)
-                ON DELETE SET NULL,
-
-            graph_id TEXT NOT NULL,
-
-            aux_id TEXT,
-            bf_distance INT,
-            pushed INT,
-            popped INT,
-            tree INT,
-            color INT DEFAULT 0,
-            metadata TEXT,
-            sp_estimate NUMERIC,
-            topological_id INT,
-            scc_index INT,
-            scc_lowlink INT,
-            scc_onstack INT,
-            mst_key NUMERIC,
-
-            FOREIGN KEY (graph_id) REFERENCES graph(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE
-        );
-
-
-        CREATE TABLE edge(
-
-            id INT PRIMARY KEY,
-            transpose_id INT REFERENCES edge(id)
-                ON DELETE SET NULL,
-            predecessor INT REFERENCES edge(id),
-
-            parent_vertex_id INTEGER NOT NULL,
-            child_vertex_id INTEGER NOT NULL,
-
-            graph_id TEXT NOT NULL,
-            
-            type INT,
-            tree INT,
-            color INT DEFAULT 0,
-            pushed INT,
-            popped INT,
-            component_graph_bridge INT,
-            metadata TEXT,
-            weight NUMERIC,
-            aux_id TEXT,
-            mf_capacity NUMERIC,
-            mf_flow NUMERIC DEFAULT 0,
-
-            FOREIGN KEY (graph_id) REFERENCES graph(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE,
-            FOREIGN KEY (parent_vertex_id) REFERENCES vertex(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE,
-            FOREIGN KEY (child_vertex_id) REFERENCES vertex(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE
-        );
-
-
-        CREATE TABLE cycle(
-            graph_id TEXT NOT NULL,
-            cardinality INT NOT NULL,
-            inflows INT,
-            outflows INT,
-            metadata TEXT,
-
-            id INT PRIMARY KEY,
-
-            FOREIGN KEY (graph_id) REFERENCES graph(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE
-        );
-
-
-        CREATE TABLE cycle_edge(
-            cycle_id NOT NULL,
-            edge_id NOT NULL,
-
-            FOREIGN KEY (cycle_id) REFERENCES cycle(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE,
-            FOREIGN KEY (edge_id) REFERENCES edge(id)
-                ON DELETE CASCADE
-                ON UPDATE CASCADE
-        );
-
-        """,  # 0
-        "SELECT mode FROM graph WHERE id = {id!i:1}",  # 1
-        """
-        INSERT INTO graph (id, directed, acyclic, metadata, mode)
-        VALUES (
-            {id!i:1}, {directed!i:2}, {acyclic!i:3}, {metadata!s:4}, {mode!i:5}
-        )
-        """,  # 2
-        """
-        SELECT directed, acyclic, metadata, mode, id
-        FROM graph
-        WHERE id = {id!i:1}
-        """,  # 3
-        """
-        UPDATE graph
-        SET
-            directed = {directed!i:1},
-            acyclic = {acyclic!i:2},
-            metadata = {metadata!s:3},
-            mode = {mode!i:4}
-        WHERE id = {id!i:5}
-        """,  # 4
-        "DELETE FROM graph WHERE id = {id!i:1}",  # 5
-        "SELECT COALESCE(MAX(id), -1) + 1 FROM vertex",  # 6
-        """
-        INSERT INTO vertex (
-            id,
-            predecessor,
-            graph_id,
-            aux_id,
-            bf_distance,
-            pushed,
-            popped,
-            tree,
-            color,
-            metadata,
-            sp_estimate,
-            topological_id,
-            scc_index,
-            scc_lowlink,
-            scc_onstack,
-            mst_key
-        )
-        VALUES (
-            {id!i:1},
-            {predecessor!i:2},
-            {graph_id!s:3},
-            {aux_id!s:4},
-            {bf_distance!i:5},
-            {pushed!i:6},
-            {popped!i:7},
-            {tree!i:8},
-            {color!i:9},
-            {metadata!s:10},
-            {sp_estimate!f:11},
-            {topological_id!i:12},
-            {scc_index!i:13},
-            {scc_lowlink!i:14},
-            {scc_onstack!i:15},
-            {mst_key!f:16}
-        )
-        RETURNING id
-        """,  # 7
-        "SELECT * FROM vertex WHERE id = {id!i:1}",  # 8
-        """
-        UPDATE
-            vertex
-        SET
-            predecessor = {predecessor!i:1},
-            graph_id = {graph_id!s:2},
-            aux_id = {aux_id!s:3},
-            bf_distance = {bf_distance!i:4},
-            pushed = {pushed!i:5},
-            popped = {popped!i:6},
-            tree = {tree!i:7},
-            color = {color!i:8},
-            metadata = {metadata!s:9},
-            sp_estimate = {sp_estimate!f:10},
-            topological_id = {topological_id!i:11},
-            scc_index = {scc_index!i:12},
-            scc_lowlink = {scc_lowlink!i:13},
-            scc_onstack = {scc_onstack!i:14},
-            mst_key = {mst_key!f:15}
-        WHERE
-            id = {id!i:16}
-        """,  # 9
-        "DELETE FROM vertex WHERE id = {id!i:1}",  # 10
-        "SELECT COALESCE(MAX(id), -1) + 1 FROM edge",  # 11
-        """
-        INSERT INTO edge (
-            id,
-            transpose_id,
-            predecessor,
-            parent_vertex_id,
-            child_vertex_id,
-            graph_id,
-            type,
-            tree,
-            color,
-            pushed,
-            popped,
-            component_graph_bridge,
-            metadata,
-            weight,
-            aux_id,
-            mf_capacity,
-            mf_flow
-        )
-        VALUES (
-            {id!i:1},
-            {transpose_id!i:2},
-            {predecessor!i:3},
-            {parent_vertex_id!i:4},
-            {child_vertex_id!i:5},
-            {graph_id!s:6},
-            {type!i:7},
-            {tree!i:8},
-            {color!i:9},
-            {pushed!i:10},
-            {popped!i:11},
-            {component_graph_bridge!i:12},
-            {metadata!s:13},
-            {weight!f:14},
-            {aux_id!s:15},
-            {mf_capacity!f:16},
-            {mf_flow!f:17}
-        )
-        RETURNING id
-        """,  # 12
-        "SELECT * FROM edge WHERE id = {id!i:1}",  # 13
-        """
-        UPDATE
-            edge
-        SET
-            transpose_id = {transpose_id!i:1},
-            predecessor = {predecessor!i:2},
-            parent_vertex_id = {parent_vertex_id!i:3},
-            child_vertex_id = {child_vertex_id!i:4},
-            graph_id = {graph_id!s:5},
-            type = {type!i:6},
-            tree = {tree!i:7},
-            color = {color!i:8},
-            pushed = {pushed!i:9},
-            popped = {popped!i:10},
-            component_graph_bridge = {component_graph_bridge!i:11},
-            metadata = {metadata!s:12},
-            weight = {weight!f:13},
-            aux_id = {aux_id!s:14},
-            mf_capacity = {mf_capacity!f:15},
-            mf_flow = {mf_flow!f:16}
-
-        WHERE
-            id = {id!i:15}
-        """,  # 14
-        "DELETE FROM edge WHERE id = {id!i:1}",  # 15
-        """
-        INSERT INTO graph (id, acyclic, directed, metadata)
-        VALUES (
-            {id!i:1},
-            (SELECT acyclic FROM graph WHERE id = {id!i:2}),
-            (SELECT directed FROM graph WHERE id = {id!i:3}), 
-            {metadata!s:4}
-        )
-        """,  # 16
-        "SELECT id FROM vertex WHERE graph_id = {graph_id!s:1}",  # 17
-        """
-        SELECT
-            id, parent_vertex_id, child_vertex_id, component_graph_bridge
-        FROM
-            edge
-        WHERE
-            graph_id = {graph_id!s:1}
-        """,  # 18
-        "UPDATE edge SET transpose_id = {transpose_id!i:1} WHERE id = {id!i:2}",  # 19
-        """
-        UPDATE edge
-        SET tree = NULL, color = 0, pushed = NULL, popped = NULL
-        WHERE graph_id = {graph_id!s:1}
-        """,  # 20
-        "SELECT id FROM edge WHERE graph_id = {graph_id!s:1}",  # 21
-        """
-        UPDATE
-            edge
-        SET
-            color = 1, pushed = {pushed!i:1}, tree = {tree!i:2}
-        WHERE
-            graph_id = {graph_id!s:3} AND id = {id!i:4} AND color = 0
-        RETURNING
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        """,  # 22
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            graph_id = {graph_id!s:1}
-            AND parent_vertex_id = {parent_vertex_id!i:2}
-        """,  # 23
-        """
-        SELECT COUNT(*)
-        FROM edge
-        WHERE graph_id = {graph!s:1} AND tree = {tree!i:2} AND color = 1
-        """,  # 24
-        """
-        UPDATE edge
-        SET color = 1, pushed = {pushed!i:1}, tree = {tree!i:2}
-        WHERE id = {id!i:3}
-        """,  # 25
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            graph_id = {graph_id!s:1}
-            AND parent_vertex_id = {parent_vertex_id!i:2}
-        """,  # 26
-        "UPDATE edge SET color = 2, popped = {popped!i:1} WHERE id = {id!i:2}",  # 27
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            graph_id = {graph_id!s:1}
-            AND pushed = (
-                SELECT
-                    MAX(pushed)
-                FROM
-                    edge
-                WHERE
-                    graph_id = {graph_id!s:2}
-                    AND tree = {tree!i:3}
-                    AND color = 1
-                    AND child_vertex_id = {child_vertex_id!i:4}
-                LIMIT 1
-            )
-        """,  # 28
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            graph_id = {graph_id!s:1}
-            AND parent_vertex_id = {parent_vertex_id!i:2}
-        """,  # 29
-        "DELETE FROM cycle WHERE graph_id = {graph!s:1}",  # 30
-        "SELECT cycle_id FROM cycle_edge WHERE edge_id = {edge_id!i:1} LIMIT 1",  # 31
-        """
-        SELECT id
-        FROM edge
-        WHERE
-            pushed >= {pushed1!i:1}
-            AND pushed <= {pushed2!i:2}
-            AND color = 1
-            AND tree = {tree!i:3}
-            AND graph_id = {graph_id!s:4}
-        """,  # 32
-        """
-        INSERT INTO cycle (id, graph_id, cardinality)
-        VALUES (
-            COALESCE((SELECT MAX(id) FROM cycle), -1) + 1,
-            {graph_id!s:1},
-            {cardinality!i:2}
-        )
-        RETURNING id
-        """,  # 33
-        """
-        INSERT INTO cycle_edge (cycle_id, edge_id)
-        VALUES ({cycle_id!i:1}, {edge_id!i:2})
-        """,  # 34
-        """
-        SELECT cycle_id
-        FROM cycle_edge
-        WHERE edge_id = {edge_id!i:1} LIMIT 1
-        """,  # 35
-        """
-        SELECT
-            e.id,
-            e.child_vertex_id,
-            e.parent_vertex_id,
-            e.tree,
-            e.color,
-            e.pushed,
-            e.graph_id
-        FROM
-            cycle_edge AS ce
-        LEFT JOIN
-            edge AS e
-            ON e.id = ce.edge_id
-        WHERE
-            ce.cycle_id = {cycle_id!i:1} AND e.pushed = e.popped - 1
-        """,  # 36
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            parent_vertex_id = {parent_vertex_id!i:1} AND color = 1
-        """,  # 37
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            child_vertex_id = {child_vertex_id!i:1}
-            AND color = 1
-            AND pushed = (SELECT MAX(pushed) FROM edge)
-        """,  # 38
-        """
-        SELECT
-            id,
-            child_vertex_id,
-            parent_vertex_id,
-            tree,
-            color,
-            pushed,
-            graph_id
-        FROM
-            edge
-        WHERE
-            color = 1
-            AND child_vertex_id = (
-                SELECT e.parent_vertex_id
-                FROM edge AS e
-                INNER JOIN cycle_edge AS ce
-                    ON ce.edge_id = e.id
-                WHERE
-                    e.graph_id = {graph_id!s:1}
-                    AND e.tree = {tree!i:2}
-                    AND e.color = 2
-                    AND e.pushed <= {pushed1!i:3}
-                    AND e.pushed >= {pushed2!i:4}
-                    AND ce.cycle_id = {cycle_id!i:5}
-            )
-        """,  # 39
-        """
-        SELECT
-            id
-        FROM
-            edge
-        WHERE
-            (
-                pushed BETWEEN {pushed1!i:1} AND {pushed2!i:2}
-                OR pushed BETWEEN {pushed3!i:3} AND {pushed4!i:4}
-                OR pushed BETWEEN (
-                    SELECT pushed
-                    FROM edge
-                    WHERE
-                        parent_vertex_id = {parent_vertex_id!i:5}
-                        AND pushed = (
-                            SELECT MAX(pushed)
-                            FROM edge
-                            WHERE parent_vertex_id = {parent_vertex_id!i:6}
-                        )
-                ) AND {pushed5!i:7}
-            )
-            AND tree = {tree!i:8}
-            AND graph_id = {graph_id!s:9}
-        """,  # 40
-        """
-        INSERT INTO cycle (id, graph_id, cardinality)
-        VALUES (
-            COALESCE((SELECT MAX(id) FROM cycle), -1) + 1,
-            {graph_id!s:1},
-            {cardinality!i:2}
-        )
-        RETURNING id
-        """,  # 41
-        """
-        INSERT INTO cycle_edge (cycle_id, edge_id)
-        VALUES ({cycle_id!i:1}, {edge_id!i:2})
-        """,  # 42
-        "UPDATE graph SET acyclic = 1 WHERE id = {id!i:1}",  # 43
-        "SELECT COUNT(*) FROM cycle WHERE graph_id = {graph_id!s:1}",  # 44
-        "UPDATE vertex SET topological_id = NULL WHERE graph_id = {graph_id!s:1}",  # 45
-        """
-        UPDATE
-            vertex
-        SET
-            topological_id = COALESCE(
-                (
-                    SELECT MAX(topological_id) + 1
-                    FROM vertex
-                    WHERE graph_id = {graph_id!s:1}
-                ),
-                COALESCE(
-                    (
-                        SELECT topological_id
-                        FROM vertex
-                        WHERE id = {id!i:2}
-                    ),
-                    0
-                )
-            )
-        WHERE
-            id = {id!i:3}
-        """,  # 46
-        """
-        SELECT id
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1}
-        ORDER BY topological_id DESC
-        """,  # 47
-        """
-        UPDATE vertex
-        SET topological_id = {topological_id!i:1}
-        WHERE id = {id!i:2}
-        """,  # 48
-        """
-        UPDATE vertex
-        SET scc_index = NULL, scc_lowlink = NULL, scc_onstack = 0
-        WHERE graph_id = {graph_id!s:1}
-        """,  # 49
-        """
-        UPDATE
-            vertex
-        SET
-            scc_index = 1 + COALESCE(
-                (SELECT MAX(scc_index) FROM vertex), -1
-            ),
-            scc_lowlink = 1 + COALESCE(
-                (SELECT MAX(scc_index) FROM vertex), -1
-            ),
-            scc_onstack = 1
-        WHERE
-            id = {id!i:1} AND scc_index IS NULL
-        """,  # 50
-        """
-        UPDATE
-            vertex
-        SET
-            scc_index = 1 + COALESCE(
-                (SELECT MAX(scc_index) FROM vertex), -1
-            ),
-            scc_lowlink = 1 + COALESCE(
-                (SELECT MAX(scc_index) FROM vertex), -1
-            ),
-            scc_onstack = 1
-        WHERE
-            id = {id!i:1} AND scc_index IS NULL
-        RETURNING id, scc_index, scc_lowlink, scc_onstack
-        """,  # 51
-        """
-        SELECT id, scc_index, scc_lowlink, scc_onstack
-        FROM vertex
-        WHERE id = {id!i:1}
-        """,  # 52
-        """
-        SELECT id, scc_index, scc_lowlink, scc_onstack
-        FROM vertex
-        WHERE id = {id!i:1}
-        """,  # 53
-        "UPDATE vertex SET scc_lowlink = {scc_lowlink!i:1} WHERE id = {id!i:2}",  # 54
-        """
-        SELECT id, scc_index, scc_lowlink, scc_onstack
-        FROM vertex
-        WHERE id = {id!i:1}
-        """,  # 55
-        """
-        SELECT id, scc_index, scc_lowlink, scc_onstack
-        FROM vertex
-        WHERE id = {id!i:1}
-        """,  # 56
-        "UPDATE vertex SET scc_lowlink = {scc_lowlink!i:1} WHERE id = {id!i:2}",  # 57
-        "UPDATE vertex SET scc_onstack = 0 WHERE scc_lowlink = {scc_lowlink!i:1}",  # 58
-        "UPDATE vertex SET scc_onstack = 0 WHERE id = {id!i:1}",  # 59
-        """
-        UPDATE edge
-        SET predecessor = NULL, pushed = NULL
-        WHERE graph_id = {graph_id!s:1}
-        """,  # 60
-        "UPDATE edge SET pushed = 1 WHERE id = {id!i:1}",  # 61
-        """
-        SELECT COUNT(*)
-        FROM edge
-        WHERE graph_id = {graph_id!s:1} AND pushed > 0
-        """,  # 62
-        """
-        SELECT id, predecessor, pushed
-        FROM edge
-        WHERE graph_id = {graph_id!s:1} AND pushed > 0
-        ORDER BY pushed ASC
-        LIMIT 1
-        """,  # 63
-        "UPDATE edge SET pushed = -1 * pushed WHERE id = {id!i:1}",  # 64
-        """
-        WITH
-            w AS (
-                SELECT id, predecessor, pushed, child_vertex_id AS v
-                FROM edge
-                WHERE pushed IS NULL AND parent_vertex_id = (
-                    SELECT child_vertex_id FROM edge WHERE id = {id!i:1}
-                )
-            ),
-            y AS (
-                SELECT id, predecessor, pushed, parent_vertex_id AS v
-                FROM edge
-                WHERE pushed IS NULL AND child_vertex_id = (
-                    SELECT child_vertex_id FROM edge WHERE id = {id!i:2}
-                )
-            ),
-            x AS (
-                SELECT id, predecessor, pushed, child_vertex_id AS v
-                FROM edge
-                WHERE pushed IS NULL AND parent_vertex_id = (
-                    SELECT parent_vertex_id FROM edge WHERE id = {id!i:3}
-                )
-            ),
-            z AS (
-                SELECT id, predecessor, pushed, parent_vertex_id AS v
-                FROM edge
-                WHERE pushed IS NULL AND child_vertex_id = (
-                    SELECT parent_vertex_id FROM edge WHERE id = {id!i:4}
-                )
-            ),
-            a AS (
-                SELECT *
-                FROM (SELECT * FROM w UNION SELECT * FROM y)
-                WHERE v NOT IN (
-                    SELECT child_vertex_id
-                    FROM edge
-                    WHERE pushed IS NOT NULL AND id <> {id!i:5}
-                    UNION
-                    SELECT parent_vertex_id
-                    FROM edge
-                    WHERE pushed IS NOT NULL AND id <> {id!i:6}
-                )
-            ),
-            b AS (
-                SELECT *
-                FROM (SELECT * FROM x UNION SELECT * FROM z)
-                WHERE v NOT IN (
-                    SELECT child_vertex_id
-                    FROM edge
-                    WHERE pushed IS NOT NULL AND id <> {id!i:7}
-                    UNION
-                    SELECT parent_vertex_id
-                    FROM edge
-                    WHERE pushed IS NOT NULL AND id <> {id!i:8}
-                )
-            )
-            SELECT id, predecessor, pushed
-            FROM (SELECT * FROM a UNION SELECT * FROM b)
-            WHERE id NOT IN (
-                SELECT a.id FROM a INNER JOIN b ON a.v = b.v
-            )
-        """,  # 65
-        """
-        UPDATE edge
-        SET predecessor = {predecessor!i:1}, pushed = (
-            SELECT COALESCE(MAX(pushed), 1) + 1
-            FROM edge
-            WHERE graph_id = {graph_id!s:2} AND pushed > 0
-        )
-        WHERE id = {id!i:3}
-        """,  # 66
-        "UPDATE edge SET pushed = NULL WHERE graph_id = {graph_id!s:1}",  # 67
-        """
-        SELECT id, predecessor, NULL AS pushed
-        FROM edge
-        WHERE id = {id!i:1}
-        """,  # 68
-        """
-        UPDATE vertex
-        SET mst_key = {mst_key!f:1}, predecessor = NULL, color = 0
-        WHERE graph_id = {graph_id!s:2}
-        """,  # 69
-        "UPDATE vertex SET mst_key = 0, color = 0 WHERE id = {id!i:1}",  # 70
-        """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND color = 0
-        """,  # 71
-        """
-        SELECT id, predecessor, mst_key, color
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND color = 0
-        ORDER BY mst_key ASC
-        LIMIT 1
-        """,  # 72
-        """
-        UPDATE vertex
-        SET color = 2
-        WHERE graph_id = {graph_id!s:1} AND id = {id!i:2}
-        """,  # 73
-        """
-        WITH
-            x AS (
-                SELECT parent_vertex_id AS id
-                FROM edge
-                WHERE graph_id = {graph_id!s:1} AND child_vertex_id = {child_vertex_id!i:2}
-            ),
-            y AS (
-                SELECT child_vertex_id AS id
-                FROM edge
-                WHERE graph_id = {graph_id!s:3} AND parent_vertex_id = {parent_vertex_id!i:4}
-            )
-        SELECT id, predecessor, mst_key, color
-        FROM vertex
-        WHERE graph_id = {graph_id!s:5} AND id IN (
-            SELECT id FROM x
-            UNION
-            SELECT id FROM y
-        )
-        """,  # 74
-        """
-        SELECT weight
-        FROM edge
-        WHERE 
-            graph_id = {graph_id!s:1}
-            AND (
-                (parent_vertex_id = {vid1!i:2} AND child_vertex_id = {vid2!i:3})
-                OR (child_vertex_id = {vid1!i:4} AND parent_vertex_id = {vid2!i:5})
-            )
-        ORDER BY weight ASC
-        LIMIT 1
-        """,  # 75
-        """
-        UPDATE vertex
-        SET predecessor = {predecessor!i:1}, mst_key = {mst_key!f:2}
-        WHERE id = {id!i:3}
-        """,  # 76
-        """
-        SELECT id, predecessor, mst_key, color
-        FROM vertex
-        WHERE id = {id!i:1}
-        """,  # 77
-        """
-        UPDATE vertex
-        SET sp_estimate = {sp_estimate!i:1}, predecessor = NULL, color = 0
-        WHERE graph_id = {graph_id!s:2}
-        """,  # 78
-        "UPDATE vertex SET sp_estimate = 0, color = 0 WHERE id = {id!i:1}",  # 79
-        """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND color = 0
-        """,  # 80
-        """
-        SELECT id, predecessor, sp_estimate, color
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND color = 0
-        ORDER BY sp_estimate ASC
-        LIMIT 1
-        """,  # 81
-        """
-        UPDATE vertex
-        SET color = 2
-        WHERE graph_id = {graph_id!s:1} AND id = {id!i:2}
-        """,  # 82
-        """
-        SELECT
-            v.id, v.predecessor, v.sp_estimate, v.color
-        FROM
-            edge AS e
-        INNER JOIN
-            vertex AS v
-            ON v.id = e.child_vertex_id
-        WHERE
-            v.graph_id = {graph_id!s:1}
-            AND e.parent_vertex_id = {parent_vertex_id!i:2}
-        """,  # 83
-        """
-        SELECT weight
-        FROM edge
-        WHERE 
-            graph_id = {graph_id!s:1}
-            AND (
-                parent_vertex_id = {parent_vertex_id!i:2}
-                AND child_vertex_id = {child_vertex_id!i:3}
-            )
-        """,  # 84
-        """
-        UPDATE vertex
-        SET predecessor = {predecessor!i:1}, sp_estimate = {sp_estimate!f:2}
-        WHERE id = {id!i:3}
-        """,  # 85
-        """
-        SELECT id, predecessor, sp_estimate, color
-        FROM vertex
-        WHERE id = {id!i:1}
-        """,  # 86
-        """
-        UPDATE vertex
-        SET
-            tree = NULL,
-            color = 0,
-            predecessor = NULL,
-            bf_distance = {bf_distance!i:1},
-            pushed = NULL
-        WHERE graph_id = {graph_id!s:2}
-        """,  # 87
-        """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND id = {id!i:2}
-        LIMIT 1
-        """,  # 88
-        """
-        UPDATE
-            vertex
-        SET
-            color = 1,
-            predecessor = NULL,
-            bf_distance = 0,
-            pushed = {pushed!i:1}
-        WHERE
-            graph_id = {graph_id!s:2} AND id = {id!i:3}
-        """,  # 89
-        """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
-        """,  # 90
-        """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
-        ORDER BY pushed ASC
-        LIMIT 1
-        """,  # 91
-        """
-        UPDATE vertex
-        SET color = 2, pushed = NULL
-        WHERE id = {id!i:1}
-        """,  # 92
-        """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE id IN (
-            SELECT child_vertex_id
-            FROM edge
-            WHERE parent_vertex_id = {parent_vertex_id!i:1}
-        )
-        UNION
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE id IN (
-            SELECT parent_vertex_id
-            FROM edge
-            WHERE child_vertex_id = {child_vertex_id!i:2}
-        )
-        """,  # 93
-        """
-        UPDATE
-            vertex
-        SET
-            color = 1,
-            predecessor = {predecessor!i:1},
-            bf_distance = {bf_distance!i:2},
-            pushed = ?
-        WHERE
-            graph_id = {graph_id!s:3} AND id = {id!i:4}
-        """,  # 94
-        """
-        UPDATE vertex
-        SET
-            tree = NULL,
-            color = 0,
-            predecessor = NULL,
-            bf_distance = {bf_distance!i:1},
-            pushed = NULL
-        WHERE graph_id = {graph_id!s:2}
-        """,  # 95
-        """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND id = {id!i:2}
-        LIMIT 1
-        """,  # 96
-        """
-        UPDATE
-            vertex
-        SET
-            color = 1,
-            predecessor = NULL,
-            bf_distance = 0,
-            pushed = {pushed!i:1}
-        WHERE
-            graph_id = {graph_id!s:2} AND id = {id!i:3}
-        """,  # 97
-        """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
-        """,  # 98
-        """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND pushed IS NOT NULL
-        ORDER BY pushed ASC
-        LIMIT 1
-        """,  # 99
-        """
-        UPDATE vertex
-        SET color = 2, pushed = NULL
-        WHERE id = {id!i:1}
-        """,  # 100
-        """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE id IN (
-            SELECT e.child_vertex_id
-            FROM edge AS e
-            WHERE parent_vertex_id = {parent_vertex_id!i:1}
-            AND e.mf_capacity > e.mf_flow
-            AND COALESCE(e.metadata, '') NOT LIKE '%"hiding" = true%'
-        )
-        AND pushed IS NULL
-        AND color = 0
-        """,  # 101
-        """
-        UPDATE
-            vertex
-        SET
-            color = 1,
-            predecessor = {predecessor!i:1},
-            bf_distance = {bf_distance!i:2},
-            pushed = {pushed!i:3}
-        WHERE
-            graph_id = {graph_id!i:4} AND id = {id!i:5}
-        """,  # 102
-        "UPDATE edge SET mf_flow = 0 WHERE graph_id = {graph_id!s:1}",  # 103
-        """
-        SELECT
-            id,
-            parent_vertex_id,
-            child_vertex_id,
-            mf_capacity,
-            metadata,
-            CASE
-                WHEN parent_vertex_id < child_vertex_id
-                    THEN parent_vertex_id
-                ELSE child_vertex_id
-            END AS v1,
-            CASE
-                WHEN parent_vertex_id < child_vertex_id
-                    THEN child_vertex_id
-                ELSE parent_vertex_id
-            END AS v2
-        FROM
-            edge
-        WHERE
-            graph_id = {graph_id!s:1}
-        ORDER BY
-            v1, v2, parent_vertex_id, child_vertex_id
-        """,  # 104
-        """
-        WITH RECURSIVE
-            path_vertices AS (
-                SELECT v.id, v.predecessor
-                FROM vertex AS v
-                WHERE id = {id!i:1}
-                UNION ALL
-                SELECT v.id, v.predecessor
-                FROM vertex AS v
-                JOIN path_vertices AS pv
-                    ON v.id = pv.predecessor
-                WHERE v.predecessor IS NOT NULL
-            ),
-            path_edges AS (
-                SELECT e.id, e.mf_capacity, e.mf_flow, e.metadata
-                FROM edge AS e
-                JOIN path_vertices AS pv
-                    ON e.child_vertex_id = pv.id
-                    AND e.parent_vertex_id = pv.predecessor
-            ),
-            path_complete_flag AS (
-                SELECT 1
-                FROM path_vertices
-                WHERE predecessor = {predecessor!i:2}
-            )
-        SELECT *
-        FROM path_edges
-        WHERE 1 IN (SELECT * FROM path_complete_flag)
-        """,  # 105
-        "UPDATE edge SET mf_flow = {mf_flow!f:1} WHERE id = {id!i:2}",  # 106
-        """
-        UPDATE vertex
-        SET color = 0, pushed = NULL, popped = NULL
-        WHERE graph_id = {graph_id!s:1}
-        """,  # 107
-        "SELECT id FROM vertex WHERE graph_id = {graph_di!s:1}",  # 108
-        """
-        UPDATE vertex
-        SET color = 1, pushed = {pushed!i:1}, tree = {tree!i:2}
-        WHERE graph_id = {graph_id!s:3} AND id = {id!i:4} AND color = 0
-        RETURNING id, tree, color, pushed, graph_id
-        """,  # 109
-        """
-        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-        FROM vertex AS v
-        INNER JOIN edge AS e
-            ON e.child_vertex_id = v.id
-        WHERE
-            v.color = 0
-            AND e.parent_vertex_id = {parent_vertex_id!i:1}
-            AND v.graph_id = {graph_id!s:2}
-        """,  # 110
-        """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND tree = {tree!i:2} AND color = 1
-        """,  # 111
-        """
-        UPDATE vertex
-        SET color = 1, pushed = {pushed!i:1}, tree = {tree!i:2}
-        WHERE id = {id!i:3}
-        """,  # 112
-        """
-        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-        FROM vertex AS v
-        INNER JOIN edge AS e
-            ON e.child_vertex_id = v.id
-        WHERE
-            v.color = 0
-            AND e.parent_vertex_id = {parent_vertex_id!i:1}
-            AND v.graph_id = {graph_id!s:2}
-        """,  # 113
-        """
-        UPDATE vertex
-        SET color = 2, popped = {popped!i:1}
-        WHERE id = {id!i:2}
-        """,  # 114
-        """
-        SELECT id, tree, color, pushed, graph_id
-        FROM vertex
-        WHERE graph_id = {graph_id!s:1} AND pushed = (
-            SELECT MAX(pushed)
-            FROM vertex
-            WHERE tree = {tree!i:2} AND color = 1
-        )
-        """,  # 115
-        """
-        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-        FROM vertex AS v
-        INNER JOIN edge AS e
-            ON e.child_vertex_id = v.id
-        WHERE
-            v.color = 0
-            AND e.parent_vertex_id = {parent_vertex_id!i:1}
-            AND v.graph_id = {graph_id!s:2}
-        """,  # 116
-    ]
-
-    model = sql[0]
-
-    _sql = {
+    sql = {
         "model": """
         CREATE TABLE graph(
 
@@ -1343,7 +243,7 @@ class Database:
 
         """
     }
-    _model = _sql["model"]
+    model = sql["model"]
 
     def __init__(self, connection: object) -> None:
         """
@@ -1356,31 +256,31 @@ class Database:
         self.connection = connection
         self.cursor = self.connection.cursor()
 
-        # format sql according to connection's paramstyle
-        formatter = string.Formatter()
-        param_style = sys.modules[connection.__module__].paramstyle
-        for i, statement in enumerate(self.sql):
-            statement_fragments = []
-            for tup in formatter.parse(statement):
-                statement_fragments.append(tup[0])
-                if tup[1] is None:
-                    continue
-                if param_style == "qmark":
-                    statement_fragments.append("?")
-                elif param_style == "numeric":
-                    statement_fragments.append(":" + tup[2])
-                elif param_style == "named":
-                    statement_fragments.append(":" + tup[1])
-                elif param_style == "format":
-                    statement_fragments.append("%" + tup[3])
-                elif param_style == "pyformat":
-                    statement_fragments.append(f"%({tup[1]}){tup[3]}")
-                else:
-                    raise Exception(
-                        f"bad paramstyle for {connection.__module__.__name__}"
-                    )
-            self.sql[i] = "".join(statement_fragments)
-        self.sql = tuple(self.sql)
+        # # format sql according to connection's paramstyle
+        # formatter = string.Formatter()
+        # param_style = sys.modules[connection.__module__].paramstyle
+        # for i, statement in enumerate(self.sql):
+        #     statement_fragments = []
+        #     for tup in formatter.parse(statement):
+        #         statement_fragments.append(tup[0])
+        #         if tup[1] is None:
+        #             continue
+        #         if param_style == "qmark":
+        #             statement_fragments.append("?")
+        #         elif param_style == "numeric":
+        #             statement_fragments.append(":" + tup[2])
+        #         elif param_style == "named":
+        #             statement_fragments.append(":" + tup[1])
+        #         elif param_style == "format":
+        #             statement_fragments.append("%" + tup[3])
+        #         elif param_style == "pyformat":
+        #             statement_fragments.append(f"%({tup[1]}){tup[3]}")
+        #         else:
+        #             raise Exception(
+        #                 f"bad paramstyle for {connection.__module__.__name__}"
+        #             )
+        #     self.sql[i] = "".join(statement_fragments)
+        # self.sql = tuple(self.sql)
 
     def close(self: object) -> None:
         """Close the cursor then close the connection.
@@ -1396,7 +296,7 @@ class Database:
         :return None:"""
 
         # execute all statements in model
-        for table_definition in self._sql["model"].split(";"):
+        for table_definition in self.sql["model"].split(";"):
             _ = self.cursor.execute(table_definition.strip())
         self.connection.commit()
 
@@ -1414,7 +314,7 @@ class Database:
         columns = tuple(col[0] for col in cursor.description)
         return OrderedDict((item for item in zip(columns, cursor.fetchone())))
 
-    _sql |= {"check_mode": ["SELECT mode FROM graph WHERE id = ?"]}
+    sql |= {"check_mode": ["SELECT mode FROM graph WHERE id = ?"]}
 
     def check_mode(self: object, graph: str, *flags: list) -> bool:
         """Determine if any of the given "mutability mode" flags are
@@ -1428,7 +328,7 @@ class Database:
 
         # fetch the mode of graph
         mode = self.cursor.execute(
-            self._sql["check_mode"][0], (graph,)
+            self.sql["check_mode"][0], (graph,)
         ).fetchone()
 
         # raise if bad mode
@@ -1440,7 +340,7 @@ class Database:
             return True
         return False
 
-    _sql |= {
+    sql |= {
         "create_graph": [
             """
             INSERT INTO graph (id, directed, acyclic, metadata, mode)
@@ -1476,12 +376,12 @@ class Database:
 
         # create the graph
         self.cursor.execute(
-            self._sql["create_graph"][0],
+            self.sql["create_graph"][0],
             (name, directed, acyclic, metadata, mode),
         )
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "alter_graph": [
             """
         SELECT directed, acyclic, metadata, mode, id
@@ -1514,7 +414,7 @@ class Database:
 
         # fetch current record and update it
         record = self.get_ordered_dict_record(
-            self._sql["alter_graph"][0], (name,)
+            self.sql["alter_graph"][0], (name,)
         )
         for attribute in attributes:
             if attribute in record:
@@ -1527,12 +427,10 @@ class Database:
             record["metadata"] = json.dumps(record["metadata"])
 
         # udpate
-        self.cursor.execute(
-            self._sql["alter_graph"][1], tuple(record.values())
-        )
+        self.cursor.execute(self.sql["alter_graph"][1], tuple(record.values()))
         self.connection.commit()
 
-    _sql |= {"delete_graphs": ["DELETE FROM graph WHERE id = ?"]}
+    sql |= {"delete_graphs": ["DELETE FROM graph WHERE id = ?"]}
 
     def delete_graphs(self: object, *names: list[str]) -> None:
         """Delete graphs with the given names.
@@ -1542,11 +440,11 @@ class Database:
         :return None:
         """
         self.cursor.executemany(
-            self._sql["delete_graphs"][0], ((n,) for n in names)
+            self.sql["delete_graphs"][0], ((n,) for n in names)
         )
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "add_vertices": [
             "SELECT COALESCE(MAX(id), -1) + 1 FROM vertex",
             """
@@ -1587,7 +485,7 @@ class Database:
         :return list[int]:
         """
 
-        next_id = self.cursor.execute(self._sql["add_vertices"][0]).fetchone()[
+        next_id = self.cursor.execute(self.sql["add_vertices"][0]).fetchone()[
             0
         ]
 
@@ -1621,7 +519,7 @@ class Database:
             # add the vertex
             new_ids.append(
                 self.cursor.execute(
-                    self._sql["add_vertices"][1],
+                    self.sql["add_vertices"][1],
                     tuple(vertex_template.values()),
                 ).fetchone()[0]
             )
@@ -1630,7 +528,7 @@ class Database:
         # return the created vertices
         return new_ids
 
-    _sql |= {
+    sql |= {
         "alter_vertex": [
             "SELECT * FROM vertex WHERE id = ?",
             """
@@ -1675,7 +573,7 @@ class Database:
 
         # fetch current record and update it
         record = self.get_ordered_dict_record(
-            self._sql["alter_vertex"][0], (vertex_id,)
+            self.sql["alter_vertex"][0], (vertex_id,)
         )
         for attribute in attributes:
             if attribute in record:
@@ -1692,11 +590,11 @@ class Database:
 
         # udpate
         self.cursor.execute(
-            self._sql["alter_vertex"][1], (*record.values(), where_param)
+            self.sql["alter_vertex"][1], (*record.values(), where_param)
         )
         self.connection.commit()
 
-    _sql |= {"delete_vertices": ["DELETE FROM vertex WHERE id = ?"]}
+    sql |= {"delete_vertices": ["DELETE FROM vertex WHERE id = ?"]}
 
     def delete_vertices(self: object, *ids: list[str]) -> None:
         """Delete vertices with the given ids.
@@ -1705,11 +603,11 @@ class Database:
 
         :return None:"""
         self.cursor.executemany(
-            self._sql["delete_vertices"][0], ((i,) for i in ids)
+            self.sql["delete_vertices"][0], ((i,) for i in ids)
         )
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "add_edges": [
             "SELECT COALESCE(MAX(id), -1) + 1 FROM edge",
             """
@@ -1748,7 +646,7 @@ class Database:
 
         :return list[int]:"""
 
-        next_id = self.cursor.execute(self._sql["add_edges"][0]).fetchone()[0]
+        next_id = self.cursor.execute(self.sql["add_edges"][0]).fetchone()[0]
 
         # format vertex dicts
         new_ids = []
@@ -1780,7 +678,7 @@ class Database:
             # add the vertex
             new_ids.append(
                 self.cursor.execute(
-                    self._sql["add_edges"][1], tuple(edge_template.values())
+                    self.sql["add_edges"][1], tuple(edge_template.values())
                 ).fetchone()[0]
             )
         self.connection.commit()
@@ -1788,7 +686,7 @@ class Database:
         # return the created vertices
         return new_ids
 
-    _sql |= {
+    sql |= {
         "alter_edge": [
             "SELECT * FROM edge WHERE id = ?",
             """
@@ -1835,7 +733,7 @@ class Database:
 
         # fetch current record and update it
         record = self.get_ordered_dict_record(
-            self._sql["alter_edge"][0], (edge_id,)
+            self.sql["alter_edge"][0], (edge_id,)
         )
         for attribute in attributes:
             if attribute in record:
@@ -1852,11 +750,11 @@ class Database:
 
         # udpate
         self.cursor.execute(
-            self._sql["alter_edge"][1], (*record.values(), where_param)
+            self.sql["alter_edge"][1], (*record.values(), where_param)
         )
         self.connection.commit()
 
-    _sql |= {"delete_edges": ["DELETE FROM edge WHERE id = ?"]}
+    sql |= {"delete_edges": ["DELETE FROM edge WHERE id = ?"]}
 
     def delete_edges(self: object, *ids: list[str]) -> None:
         """Delete edges with the given ids.
@@ -1865,7 +763,7 @@ class Database:
 
         :return None:"""
         self.cursor.executemany(
-            self._sql["delete_edges"][0], ((i,) for i in ids)
+            self.sql["delete_edges"][0], ((i,) for i in ids)
         )
 
     def create_frucht(self: object, name: str) -> None:
@@ -1925,7 +823,7 @@ class Database:
             {"parent_vertex_id": _[9], "child_vertex_id": _[5]},
         )
 
-    _sql |= {
+    sql |= {
         "transpose": [
             """
         INSERT INTO graph (id, acyclic, directed, metadata)
@@ -1974,13 +872,13 @@ class Database:
 
         # create a graph record for transposed
         self.cursor.execute(
-            self._sql["transpose"][0],
+            self.sql["transpose"][0],
             (transposed_name, graph, graph, json.dumps({"graph": graph})),
         )
 
         # clone vertices with chunked pattern
         push_cursor = self.connection.execute(
-            self._sql["transpose"][1], (graph,)
+            self.sql["transpose"][1], (graph,)
         )
         while chunk := push_cursor.fetchmany(size=chunk_size):
 
@@ -1994,7 +892,7 @@ class Database:
             )
 
         # clone edges with chunked pattern
-        push_cursor = push_cursor.execute(self._sql["transpose"][2], (graph,))
+        push_cursor = push_cursor.execute(self.sql["transpose"][2], (graph,))
         while chunk := push_cursor.fetchmany(size=chunk_size):
 
             # swaps child/parent vertex ids
@@ -2012,7 +910,7 @@ class Database:
             )
 
             self.cursor.executemany(
-                self._sql["transpose"][3],
+                self.sql["transpose"][3],
                 zip(transpose_edge_ids, (e[0] for e in chunk)),
             )
 
@@ -2021,7 +919,7 @@ class Database:
         push_cursor.close()
         return transposed_name
 
-    _sql |= {
+    sql |= {
         "edf_search": [
             """
         UPDATE edge
@@ -2114,11 +1012,11 @@ class Database:
 
         # initialization
         current_time = 0
-        self.cursor.execute(self._sql["edf_search"][0], (graph,))
+        self.cursor.execute(self.sql["edf_search"][0], (graph,))
 
         # edge ids can be used as a tree ids
         trees_cursor = self.connection.execute(
-            self._sql["edf_search"][1], (graph,)
+            self.sql["edf_search"][1], (graph,)
         )
         while (tree := trees_cursor.fetchone()) is not None:
             tree = tree[0]
@@ -2128,7 +1026,7 @@ class Database:
                 None, None, self.cursor
             )
             edge = self.cursor.execute(
-                self._sql["edf_search"][2], (current_time, tree, graph, tree)
+                self.sql["edf_search"][2], (current_time, tree, graph, tree)
             ).fetchone()
 
             # edge with id 'tree' was not white
@@ -2137,12 +1035,12 @@ class Database:
 
             # fetch edges growing off current edge
             branch_tips = self.cursor.execute(
-                self._sql["edf_search"][3], (graph, edge[1])
+                self.sql["edf_search"][3], (graph, edge[1])
             ).fetchall()
 
             # compute stack height to use below as break condition
             tree_size = self.cursor.execute(
-                self._sql["edf_search"][4], (graph, tree)
+                self.sql["edf_search"][4], (graph, tree)
             ).fetchone()[0]
 
             # new tree created, trigger hook
@@ -2177,13 +1075,13 @@ class Database:
                         edge, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql["edf_search"][5],
+                        self.sql["edf_search"][5],
                         (current_time, tree, edge[0]),
                     )
 
                     # fetch edges growing off current edge
                     branch_tips = self.cursor.execute(
-                        self._sql["edf_search"][3], (graph, edge[1])
+                        self.sql["edf_search"][3], (graph, edge[1])
                     ).fetchall()
                     hooks.get("after_push", lambda x, y, z: None)(
                         edge, branch_tips, self.cursor
@@ -2202,7 +1100,7 @@ class Database:
                         edge, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql["edf_search"][6], (current_time, edge[0])
+                        self.sql["edf_search"][6], (current_time, edge[0])
                     )
                     current_time += 1
                     tree_size -= 1
@@ -2213,13 +1111,13 @@ class Database:
 
                     # set edge to new stack top
                     edge = self.cursor.execute(
-                        self._sql["edf_search"][7],
+                        self.sql["edf_search"][7],
                         (graph, graph, tree, edge[2]),
                     ).fetchone()
 
                     # ask stack top for its branch tips
                     branch_tips = self.cursor.execute(
-                        self._sql["edf_search"][3], (graph, edge[1])
+                        self.sql["edf_search"][3], (graph, edge[1])
                     ).fetchall()
                     hooks.get("after_pop", lambda x, y, z: None)(
                         edge, branch_tips, self.cursor
@@ -2238,7 +1136,7 @@ class Database:
         trees_cursor.close()
         hooks.get("exit", lambda y, z: None)(graph, self.cursor)
 
-    _sql |= {
+    sql |= {
         "find_cycles": [
             "DELETE FROM cycle WHERE graph_id = ?",
             "SELECT cycle_id FROM cycle_edge WHERE edge_id = ? LIMIT 1",
@@ -2380,7 +1278,7 @@ class Database:
             raise Exception(f"cannot alter cycles of '{graph}'")
 
         # delete existing cycles
-        self.cursor.execute(self._sql["find_cycles"][0], (graph,))
+        self.cursor.execute(self.sql["find_cycles"][0], (graph,))
 
         def cycles_handler(
             tree: int,
@@ -2399,7 +1297,7 @@ class Database:
 
             # edge's cycle if any
             edge_cycle_id = cursor.execute(
-                self._sql["find_cycles"][1], (edge[0],)
+                self.sql["find_cycles"][1], (edge[0],)
             ).fetchone()
             if edge_cycle_id is not None:
                 edge_cycle_id = edge_cycle_id[0]
@@ -2409,7 +1307,7 @@ class Database:
 
                 # fetch the edge ids of the cycle
                 cycle_edge_ids = cursor.execute(
-                    self._sql["find_cycles"][2],
+                    self.sql["find_cycles"][2],
                     (bt[5], current_time, tree, graph_id),
                 ).fetchall()
 
@@ -2418,13 +1316,13 @@ class Database:
 
                 # create a cycle record and return its id
                 cycle_id = cursor.execute(
-                    self._sql["find_cycles"][3], (graph_id, cardinality)
+                    self.sql["find_cycles"][3], (graph_id, cardinality)
                 ).fetchone()[0]
 
                 # and use cycle_id and cycle_edge_ids to create cycle_edge
                 # records
                 cursor.executemany(
-                    self._sql["find_cycles"][4],
+                    self.sql["find_cycles"][4],
                     [(cycle_id, edge_id[0]) for edge_id in cycle_edge_ids],
                 )
 
@@ -2443,7 +1341,7 @@ class Database:
 
                 # fetch piggyback cycle id
                 _ = cursor.execute(
-                    self._sql["find_cycles"][5], (D[0],)
+                    self.sql["find_cycles"][5], (D[0],)
                 ).fetchone()
 
                 # continue if piggyback cycle doesnt exist
@@ -2459,7 +1357,7 @@ class Database:
 
                 # fetch E, edge that closed piggyback cycle
                 E = cursor.execute(
-                    self._sql["find_cycles"][6], (piggyback_cycle_id,)
+                    self.sql["find_cycles"][6], (piggyback_cycle_id,)
                 ).fetchone()
 
                 if E is None:
@@ -2467,7 +1365,7 @@ class Database:
 
                 # fetch A, edge that E closed piggyback cycle on
                 A = cursor.execute(
-                    self._sql["find_cycles"][7], (E[1],)
+                    self.sql["find_cycles"][7], (E[1],)
                 ).fetchone()
 
                 if A is None:
@@ -2475,7 +1373,7 @@ class Database:
 
                 # fetch C, edge that closed new cycle onto D
                 C = cursor.execute(
-                    self._sql["find_cycles"][8], (D[2],)
+                    self.sql["find_cycles"][8], (D[2],)
                 ).fetchone()
 
                 if C is None:
@@ -2483,7 +1381,7 @@ class Database:
 
                 # fetch B, from which new cycle forks from piggyback
                 B = cursor.execute(
-                    self._sql["find_cycles"][9],
+                    self.sql["find_cycles"][9],
                     (graph_id, tree, C[5], A[5], piggyback_cycle_id),
                 ).fetchone()
 
@@ -2492,7 +1390,7 @@ class Database:
 
                 # fetch the new cycle edges
                 cycle_edges = cursor.execute(
-                    self._sql["find_cycles"][10],
+                    self.sql["find_cycles"][10],
                     (A[5], B[5], D[5], E[5], B[1], B[1], C[5], tree, graph_id),
                 ).fetchall()
 
@@ -2501,12 +1399,12 @@ class Database:
 
                 # create new cycle record
                 cycle_id = cursor.execute(
-                    self._sql["find_cycles"][3], (graph_id, cardinality)
+                    self.sql["find_cycles"][3], (graph_id, cardinality)
                 ).fetchone()[0]
 
                 # insert new cycle edges
                 cursor.executemany(
-                    self._sql["find_cycles"][4],
+                    self.sql["find_cycles"][4],
                     [(cycle_id, e[0]) for e in cycle_edges],
                 )
 
@@ -2515,12 +1413,12 @@ class Database:
 
             # update the graph's acyclic column
             if update_graph_table:
-                cursor.execute(self._sql["find_cycles"][11], (graph_id,))
+                cursor.execute(self.sql["find_cycles"][11], (graph_id,))
 
         # run the search
         self.edf_search(graph, iteration_begin=cycles_handler)
 
-    _sql |= {
+    sql |= {
         "topological_sort": [
             "SELECT COUNT(*) FROM cycle WHERE graph_id = ?",
             "UPDATE vertex SET topological_id = NULL WHERE graph_id = ?",
@@ -2568,14 +1466,14 @@ class Database:
         # raise if graph is marked acyclic
         if (
             self.cursor.execute(
-                self._sql["topological_sort"][0], (graph,)
+                self.sql["topological_sort"][0], (graph,)
             ).fetchone()[0]
             > 0
         ):
             raise Exception(f"graph '{graph}' is not acyclic")
 
         # reset topolgical ids of graph
-        self.cursor.execute(self._sql["topological_sort"][1], (graph,))
+        self.cursor.execute(self.sql["topological_sort"][1], (graph,))
         self.connection.commit()
 
         def before_pop(
@@ -2583,7 +1481,7 @@ class Database:
         ) -> None:
             """"""
             cursor.execute(
-                self._sql["topological_sort"][2], (edge[6], edge[2], edge[2])
+                self.sql["topological_sort"][2], (edge[6], edge[2], edge[2])
             )
 
         search_hooks["before_pop"] = before_pop
@@ -2592,15 +1490,15 @@ class Database:
         # reorder vertices so sort is ascending in topological_id
         topological_id = 0
         for vertex in self.cursor.execute(
-            self._sql["topological_sort"][3], (graph,)
+            self.sql["topological_sort"][3], (graph,)
         ).fetchall():
             self.cursor.execute(
-                self._sql["topological_sort"][4], (topological_id, vertex[0])
+                self.sql["topological_sort"][4], (topological_id, vertex[0])
             )
             topological_id += 1
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "strongly_connected_components": [
             """
         UPDATE vertex
@@ -2652,7 +1550,7 @@ class Database:
 
         # initialize vertices
         self.cursor.execute(
-            self._sql["strongly_connected_components"][0], (graph,)
+            self.sql["strongly_connected_components"][0], (graph,)
         )
         self.connection.commit()
 
@@ -2667,7 +1565,7 @@ class Database:
 
             # initialize scc attributes of the starting vertex
             cursor.execute(
-                self._sql["strongly_connected_components"][1], (edge[2],)
+                self.sql["strongly_connected_components"][1], (edge[2],)
             )
 
         # after push hook
@@ -2678,11 +1576,11 @@ class Database:
 
             # fetch child vertex
             child = cursor.execute(
-                self._sql["strongly_connected_components"][2], (edge[1],)
+                self.sql["strongly_connected_components"][2], (edge[1],)
             ).fetchone()
             if child is None:
                 child = self.cursor.execute(
-                    self._sql["strongly_connected_components"][3], (edge[1],)
+                    self.sql["strongly_connected_components"][3], (edge[1],)
                 ).fetchone()
 
             # don't interact with other components
@@ -2691,13 +1589,13 @@ class Database:
 
             # fetch parent
             parent = self.cursor.execute(
-                self._sql["strongly_connected_components"][3], (edge[2],)
+                self.sql["strongly_connected_components"][3], (edge[2],)
             ).fetchone()
 
             # parent inherets component's smallest lowlink or its own
             if Color.white not in (t[4] for t in branch_tips):
                 self.cursor.execute(
-                    self._sql["strongly_connected_components"][4],
+                    self.sql["strongly_connected_components"][4],
                     (min(parent[2], child[1]), parent[0]),
                 )
 
@@ -2709,27 +1607,27 @@ class Database:
 
             # fetch scc attributes of parent and child vertex
             parent = self.cursor.execute(
-                self._sql["strongly_connected_components"][3], (edge[2],)
+                self.sql["strongly_connected_components"][3], (edge[2],)
             ).fetchone()
             child = self.cursor.execute(
-                self._sql["strongly_connected_components"][3], (edge[1],)
+                self.sql["strongly_connected_components"][3], (edge[1],)
             ).fetchone()
 
             # bumped into a component vertex, adjust its lowlink
             if child[3] == 1:
                 self.cursor.execute(
-                    self._sql["strongly_connected_components"][4],
+                    self.sql["strongly_connected_components"][4],
                     (min(parent[2], child[2]), parent[0]),
                 )
 
             # pop parent vertex off scc stack
             if child[2] == parent[1]:
                 self.cursor.execute(
-                    self._sql["strongly_connected_components"][5], (parent[1],)
+                    self.sql["strongly_connected_components"][5], (parent[1],)
                 )
             if not branch_tips:
                 self.cursor.execute(
-                    self._sql["strongly_connected_components"][6], (child[0],)
+                    self.sql["strongly_connected_components"][6], (child[0],)
                 )
 
         self.edf_search(
@@ -2764,7 +1662,7 @@ class Database:
             iteration_complete(adjacent_obj, obj, graph, self.cursor)
         tixe(graph, self.cursor)
 
-    _sql |= {
+    sql |= {
         "ebf_search": [
             """
         UPDATE edge
@@ -2876,30 +1774,30 @@ class Database:
                 raise Exception(f"cannot alter vertices/edges of '{graph}'")
 
             # initialize all edges
-            cursor.execute(self._sql["ebf_search"][0], (graph,))
-            cursor.execute(self._sql["ebf_search"][1], (edge[0],))
+            cursor.execute(self.sql["ebf_search"][0], (graph,))
+            cursor.execute(self.sql["ebf_search"][1], (edge[0],))
 
         def loop_condition(graph: str, cursor: object) -> bool:
             """"""
             return (
                 0
                 < cursor.execute(
-                    self._sql["ebf_search"][2], (graph,)
+                    self.sql["ebf_search"][2], (graph,)
                 ).fetchone()[0]
             )
 
         def pop(graph: str, cursor: object) -> tuple:
             """"""
             next_edge = cursor.execute(
-                self._sql["ebf_search"][3], (graph,)
+                self.sql["ebf_search"][3], (graph,)
             ).fetchone()
-            cursor.execute(self._sql["ebf_search"][4], (next_edge[0],))
+            cursor.execute(self.sql["ebf_search"][4], (next_edge[0],))
             return next_edge
 
         def adjacency(edge: tuple, graph: str, cursor: object) -> list:
             """"""
             return cursor.execute(
-                self._sql["ebf_search"][5], 8 * (edge[0],)
+                self.sql["ebf_search"][5], 8 * (edge[0],)
             ).fetchall()
 
         def push(
@@ -2907,16 +1805,16 @@ class Database:
         ) -> None:
             """"""
             cursor.execute(
-                self._sql["ebf_search"][6], (edge[0], graph, adj_edge[0])
+                self.sql["ebf_search"][6], (edge[0], graph, adj_edge[0])
             )
 
         def tixe(graph: str, cursor: object) -> None:
             """"""
-            cursor.execute(self._sql["ebf_search"][7], (graph,))
+            cursor.execute(self.sql["ebf_search"][7], (graph,))
 
         # fetch start edge data
         start_edge = self.cursor.execute(
-            self._sql["ebf_search"][8], (start_edge_id,)
+            self.sql["ebf_search"][8], (start_edge_id,)
         ).fetchone()
         if start_edge is None:
             raise Exception(f"edge '{start_edge_id}' does not exist")
@@ -2933,7 +1831,7 @@ class Database:
         )
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "minimum_spanning_tree": [
             """
         UPDATE vertex
@@ -3019,33 +1917,33 @@ class Database:
 
             # initialize all edges
             cursor.execute(
-                self._sql["minimum_spanning_tree"][0], (math.inf, graph)
+                self.sql["minimum_spanning_tree"][0], (math.inf, graph)
             )
-            cursor.execute(self._sql["minimum_spanning_tree"][1], (vertex[0],))
+            cursor.execute(self.sql["minimum_spanning_tree"][1], (vertex[0],))
 
         def loop_condition(graph: str, cursor: object) -> bool:
             """"""
             return (
                 0
                 < cursor.execute(
-                    self._sql["minimum_spanning_tree"][2], (graph,)
+                    self.sql["minimum_spanning_tree"][2], (graph,)
                 ).fetchone()[0]
             )
 
         def pop(graph: str, cursor: object) -> tuple:
             """"""
             next_vertex = cursor.execute(
-                self._sql["minimum_spanning_tree"][3], (graph,)
+                self.sql["minimum_spanning_tree"][3], (graph,)
             ).fetchone()
             cursor.execute(
-                self._sql["minimum_spanning_tree"][4], (graph, next_vertex[0])
+                self.sql["minimum_spanning_tree"][4], (graph, next_vertex[0])
             ).fetchone()
             return next_vertex
 
         def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
             """"""
             return cursor.execute(
-                self._sql["minimum_spanning_tree"][5],
+                self.sql["minimum_spanning_tree"][5],
                 (graph, vertex[0], graph, vertex[0], graph),
             ).fetchall()
 
@@ -3054,19 +1952,19 @@ class Database:
         ) -> None:
             """"""
             weight = cursor.execute(
-                self._sql["minimum_spanning_tree"][6],
+                self.sql["minimum_spanning_tree"][6],
                 (graph, adj_vertex[0], vertex[0], adj_vertex[0], vertex[0]),
             ).fetchone()
             if weight is None:
                 raise Exception("no weight?")
             if adj_vertex[3] == 0 and adj_vertex[2] > weight[0]:
                 cursor.execute(
-                    self._sql["minimum_spanning_tree"][7],
+                    self.sql["minimum_spanning_tree"][7],
                     (vertex[0], weight[0], adj_vertex[0]),
                 )
 
         start_vertex = self.cursor.execute(
-            self._sql["minimum_spanning_tree"][8], (start_vertex_id,)
+            self.sql["minimum_spanning_tree"][8], (start_vertex_id,)
         ).fetchone()
         if start_vertex is None:
             raise Exception(f"edge '{start_vertex_id}' does not exist")
@@ -3082,7 +1980,7 @@ class Database:
         )
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "single_source_shortest_path": [
             """
         UPDATE vertex
@@ -3158,10 +2056,10 @@ class Database:
 
             # initialize all edges
             cursor.execute(
-                self._sql["single_source_shortest_path"][0], (math.inf, graph)
+                self.sql["single_source_shortest_path"][0], (math.inf, graph)
             )
             cursor.execute(
-                self._sql["single_source_shortest_path"][1], (vertex[0],)
+                self.sql["single_source_shortest_path"][1], (vertex[0],)
             )
 
         def loop_condition(graph: str, cursor: object) -> bool:
@@ -3169,17 +2067,17 @@ class Database:
             return (
                 0
                 < cursor.execute(
-                    self._sql["single_source_shortest_path"][2], (graph,)
+                    self.sql["single_source_shortest_path"][2], (graph,)
                 ).fetchone()[0]
             )
 
         def pop(graph: str, cursor: object) -> tuple:
             """"""
             next_vertex = cursor.execute(
-                self._sql["single_source_shortest_path"][3], (graph,)
+                self.sql["single_source_shortest_path"][3], (graph,)
             ).fetchone()
             cursor.execute(
-                self._sql["single_source_shortest_path"][4],
+                self.sql["single_source_shortest_path"][4],
                 (graph, next_vertex[0]),
             ).fetchone()
             return next_vertex
@@ -3187,7 +2085,7 @@ class Database:
         def adjacency(vertex: tuple, graph: str, cursor: object) -> list:
             """"""
             return cursor.execute(
-                self._sql["single_source_shortest_path"][5], (graph, vertex[0])
+                self.sql["single_source_shortest_path"][5], (graph, vertex[0])
             ).fetchall()
 
         def push(
@@ -3195,19 +2093,19 @@ class Database:
         ) -> None:
             """"""
             weight = cursor.execute(
-                self._sql["single_source_shortest_path"][6],
+                self.sql["single_source_shortest_path"][6],
                 (graph, vertex[0], adj_vertex[0]),
             ).fetchone()
             if weight is None:
                 raise Exception("no weight!")
             if adj_vertex[2] > vertex[2] + weight[0]:
                 cursor.execute(
-                    self._sql["single_source_shortest_path"][7],
+                    self.sql["single_source_shortest_path"][7],
                     (vertex[0], vertex[2] + weight[0], adj_vertex[0]),
                 )
 
         start_vertex = self.cursor.execute(
-            self._sql["single_source_shortest_path"][8], (start_vertex_id,)
+            self.sql["single_source_shortest_path"][8], (start_vertex_id,)
         ).fetchone()
         if start_vertex is None:
             raise Exception(f"edge '{start_vertex_id}' does not exist")
@@ -3223,7 +2121,7 @@ class Database:
         )
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "vbf_search": [
             """
         UPDATE vertex
@@ -3315,14 +2213,14 @@ class Database:
         hooks.get("enter", lambda x, y: None)(graph, self.cursor)
 
         # reset the vertices
-        self.cursor.execute(self._sql["vbf_search"][0], (math.inf, graph))
+        self.cursor.execute(self.sql["vbf_search"][0], (math.inf, graph))
 
         # initialize queue order paramter
         pushed = 0
 
         # fetch start vertex
         s = self.cursor.execute(
-            self._sql["vbf_search"][1], (graph, start_vertex_id)
+            self.sql["vbf_search"][1], (graph, start_vertex_id)
         ).fetchone()
         if s is None:
             raise Exception(
@@ -3331,7 +2229,7 @@ class Database:
 
         # push the edge to start
         hooks.get("before_enqueue", lambda x, y: None)(s, self.cursor)
-        self.cursor.execute(self._sql["vbf_search"][2], (pushed, graph, s[0]))
+        self.cursor.execute(self.sql["vbf_search"][2], (pushed, graph, s[0]))
         hooks.get("after_enqueue", lambda x, y: None)(
             s[:4] + (pushed,), self.cursor
         )
@@ -3340,21 +2238,21 @@ class Database:
         while (
             0
             < self.cursor.execute(
-                self._sql["vbf_search"][3], (graph,)
+                self.sql["vbf_search"][3], (graph,)
             ).fetchone()[0]
         ):
 
             # fetch and dequeue the next vertex
             hooks.get("before_dequeue", lambda x: None)(self.cursor)
             u = self.cursor.execute(
-                self._sql["vbf_search"][4], (graph,)
+                self.sql["vbf_search"][4], (graph,)
             ).fetchone()
-            self.cursor.execute(self._sql["vbf_search"][5], (u[0],))
+            self.cursor.execute(self.sql["vbf_search"][5], (u[0],))
             hooks.get("after_dequeue", lambda x, y: None)(u, self.cursor)
 
             # handle its descendents bf
             for v in self.cursor.execute(
-                self._sql["vbf_search"][6], (u[0], u[0])
+                self.sql["vbf_search"][6], (u[0], u[0])
             ).fetchall():
 
                 # adjacency hook
@@ -3370,7 +2268,7 @@ class Database:
                         v, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql["vbf_search"][7],
+                        self.sql["vbf_search"][7],
                         (u[0], u[4] + 1, pushed, graph, v[0]),
                     )
                     hooks.get("after_enqueue", lambda x, y: None)(
@@ -3381,7 +2279,7 @@ class Database:
         self.connection.commit()
         hooks.get("exit", lambda x, y: None)(graph, self.cursor)
 
-    _sql |= {
+    sql |= {
         "flow_network_walk_vbf": [
             """
         UPDATE vertex
@@ -3467,7 +2365,7 @@ class Database:
 
         # reset the vertices
         self.cursor.execute(
-            self._sql["flow_network_walk_vbf"][0], (math.inf, graph)
+            self.sql["flow_network_walk_vbf"][0], (math.inf, graph)
         )
 
         # initialize queue order paramter
@@ -3475,7 +2373,7 @@ class Database:
 
         # fetch start vertex
         s = self.cursor.execute(
-            self._sql["flow_network_walk_vbf"][1], (graph, source_vertex_id)
+            self.sql["flow_network_walk_vbf"][1], (graph, source_vertex_id)
         ).fetchone()
         if s is None:
             raise Exception(
@@ -3484,7 +2382,7 @@ class Database:
 
         # push the vertex to start
         self.cursor.execute(
-            self._sql["flow_network_walk_vbf"][2],
+            self.sql["flow_network_walk_vbf"][2],
             (pushed, graph, s[0]),
         )
 
@@ -3492,15 +2390,15 @@ class Database:
         while (
             0
             < self.cursor.execute(
-                self._sql["flow_network_walk_vbf"][3], (graph,)
+                self.sql["flow_network_walk_vbf"][3], (graph,)
             ).fetchone()[0]
         ):
 
             # fetch and dequeue the next vertex
             u = self.cursor.execute(
-                self._sql["flow_network_walk_vbf"][4], (graph,)
+                self.sql["flow_network_walk_vbf"][4], (graph,)
             ).fetchone()
-            self.cursor.execute(self._sql["flow_network_walk_vbf"][5], (u[0],))
+            self.cursor.execute(self.sql["flow_network_walk_vbf"][5], (u[0],))
 
             # break early at sink
             if u[0] == sink_vertex_id:
@@ -3508,20 +2406,20 @@ class Database:
 
             # handle its descendents bf
             for v in self.cursor.execute(
-                self._sql["flow_network_walk_vbf"][6], (u[0],)
+                self.sql["flow_network_walk_vbf"][6], (u[0],)
             ).fetchall():
 
                 pushed += 1
 
                 self.cursor.execute(
-                    self._sql["flow_network_walk_vbf"][7],
+                    self.sql["flow_network_walk_vbf"][7],
                     (u[0], u[4] + 1, pushed, graph, v[0]),
                 )
 
         # cleanup
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "maximum_flow": [
             "UPDATE edge SET mf_flow = 0 WHERE graph_id = ?",
             """
@@ -3591,12 +2489,12 @@ class Database:
             raise Exception(f"cannot alter vertices/edges of '{graph}'")
 
         # set flows to zero
-        self.cursor.execute(self._sql["maximum_flow"][0], (graph,))
+        self.cursor.execute(self.sql["maximum_flow"][0], (graph,))
 
         def generate_edges():
             """"""
             chunk_cursor = self.connection.execute(
-                self._sql["maximum_flow"][1], (graph,)
+                self.sql["maximum_flow"][1], (graph,)
             )
             while (chunk := chunk_cursor.fetchone()) is not None:
                 yield chunk
@@ -3644,7 +2542,7 @@ class Database:
 
             # evaluate path
             path = self.cursor.execute(
-                self._sql["maximum_flow"][2],
+                self.sql["maximum_flow"][2],
                 (sink_vertex_id, source_vertex_id),
             ).fetchall()
 
@@ -3661,12 +2559,12 @@ class Database:
                     f = edge[2] - path_residual_capcity
                 else:
                     f = edge[2] + path_residual_capcity
-                self.cursor.execute(self._sql["maximum_flow"][3], (f, edge[0]))
+                self.cursor.execute(self.sql["maximum_flow"][3], (f, edge[0]))
 
         # commit and return
         self.connection.commit()
 
-    _sql |= {
+    sql |= {
         "vdf_search": [
             """
         UPDATE vertex
@@ -3731,11 +2629,11 @@ class Database:
 
         # initialization
         current_time = 0
-        self.cursor.execute(self._sql["vdf_search"][0], (graph,))
+        self.cursor.execute(self.sql["vdf_search"][0], (graph,))
 
         # vertex ids can be used as a tree ids
         trees_cursor = self.connection.execute(
-            self._sql["vdf_search"][1], (graph,)
+            self.sql["vdf_search"][1], (graph,)
         )
         while (tree := trees_cursor.fetchone()) is not None:
             tree = tree[0]
@@ -3745,7 +2643,7 @@ class Database:
                 None, None, self.cursor
             )
             vertex = self.cursor.execute(
-                self._sql["vdf_search"][2], (current_time, tree, graph, tree)
+                self.sql["vdf_search"][2], (current_time, tree, graph, tree)
             ).fetchone()
 
             # vertex with id 'tree' was not white
@@ -3754,12 +2652,12 @@ class Database:
 
             # fetch vertices growing off current vertex
             branch_tips = self.cursor.execute(
-                self._sql["vdf_search"][3], (vertex[0], graph)
+                self.sql["vdf_search"][3], (vertex[0], graph)
             ).fetchall()
 
             # compute stack height to use below as break condition
             tree_size = self.cursor.execute(
-                self._sql["vdf_search"][4], (graph, tree)
+                self.sql["vdf_search"][4], (graph, tree)
             ).fetchone()[0]
 
             # new tree created, trigger hook
@@ -3794,13 +2692,13 @@ class Database:
                         vertex, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql["vdf_search"][5],
+                        self.sql["vdf_search"][5],
                         (current_time, tree, vertex[0]),
                     )
 
                     # fetch vertices growing off current vertex
                     branch_tips = self.cursor.execute(
-                        self._sql["vdf_search"][3], (vertex[0], graph)
+                        self.sql["vdf_search"][3], (vertex[0], graph)
                     ).fetchall()
                     hooks.get("after_push", lambda x, y, z: None)(
                         vertex, branch_tips, self.cursor
@@ -3819,7 +2717,7 @@ class Database:
                         vertex, branch_tips, self.cursor
                     )
                     self.cursor.execute(
-                        self._sql["vdf_search"][6], (current_time, vertex[0])
+                        self.sql["vdf_search"][6], (current_time, vertex[0])
                     )
                     current_time += 1
                     tree_size -= 1
@@ -3830,12 +2728,12 @@ class Database:
 
                     # set vertex to new stack top
                     vertex = self.cursor.execute(
-                        self._sql["vdf_search"][7], (graph, tree)
+                        self.sql["vdf_search"][7], (graph, tree)
                     ).fetchone()
 
                     # ask stack top for its branch tips
                     branch_tips = self.cursor.execute(
-                        self._sql["vdf_search"][3], (vertex[0], graph)
+                        self.sql["vdf_search"][3], (vertex[0], graph)
                     ).fetchall()
                     hooks.get("after_pop", lambda x, y, z: None)(
                         vertex, branch_tips, self.cursor
