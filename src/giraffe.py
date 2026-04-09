@@ -648,15 +648,15 @@ class Database:
 
         next_id = self.cursor.execute(self.sql["add_edges"][0]).fetchone()[0]
 
-        # format vertex dicts
+        # format edge dicts
         new_ids = []
-        for i, vertex in enumerate(edges):
+        for i, edge in enumerate(edges):
 
-            # fetch a template vertex dictionary
+            # fetch a template edge dictionary
             edge_template = edge_odict_factory()
 
             # raise if bad vertex attrs
-            if set(vertex) - set(edge_template):
+            if set(edge) - set(edge_template):
                 raise Exception("bad edge attributes")
 
             edge_template["graph_id"] = graph
@@ -668,14 +668,14 @@ class Database:
                 )
 
             # fill in any missing columns
-            for attr in vertex:
+            for attr in edge:
                 edge_template[attr] = edges[i][attr]
 
             if edge_template["id"] is None:
                 edge_template["id"] = next_id
                 next_id += 1
 
-            # add the vertex
+            # add the edge
             new_ids.append(
                 self.cursor.execute(
                     self.sql["add_edges"][1], tuple(edge_template.values())
