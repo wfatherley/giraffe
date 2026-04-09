@@ -16,8 +16,8 @@ such as :method:`giraffe.Database.topological_sort`.
 
 import json
 import math
-import string
-import sys
+# import string
+# import sys
 
 from collections import OrderedDict
 from enum import IntEnum
@@ -920,6 +920,194 @@ class Database:
         return transposed_name
 
     sql |= {
+        "vdf_search": [
+            """
+        UPDATE vertex
+        SET color = 0, pushed = NULL, popped = NULL
+        WHERE graph_id = ?
+        """,
+            "SELECT id FROM vertex WHERE graph_id = ?",
+            """
+        UPDATE vertex
+        SET color = 1, pushed = ?, tree = ?
+        WHERE graph_id = ? AND id = ? AND color = 0
+        RETURNING id, tree, color, pushed, graph_id
+        """,
+            """
+        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+        FROM vertex AS v
+        INNER JOIN edge AS e
+            ON e.child_vertex_id = v.id
+        WHERE
+            v.color = 0
+            AND e.parent_vertex_id = ?
+            AND v.graph_id = ?
+        """,
+            """
+        SELECT COUNT(*)
+        FROM vertex
+        WHERE graph_id = ? AND tree = ? AND color = 1
+        """,
+            """
+        UPDATE vertex
+        SET color = 1, pushed = ?, tree = ?
+        WHERE id = ?
+        """,
+            """
+        UPDATE vertex
+        SET color = 2, popped = ?
+        WHERE id = ?
+        """,
+            """
+        SELECT id, tree, color, pushed, graph_id
+        FROM vertex
+        WHERE graph_id = ? AND pushed = (
+            SELECT MAX(pushed)
+            FROM vertex
+            WHERE tree = ? AND color = 1
+        )
+        """,
+        ]
+    }
+
+    def vdf_search(self: object, graph: str, **hooks: dict) -> None:
+        """"""
+
+        # check for immutability flags set
+        if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
+            raise Exception(
+                f"cannot alter vertices/edges/cycles/cycle edges of '{graph}'"
+            )
+
+        # run enter hook
+        hooks.get("enter", lambda y, z: None)(graph, self.cursor)
+
+        # initialization
+        current_time = 0
+        self.cursor.execute(self.sql["vdf_search"][0], (graph,))
+
+        # vertex ids can be used as a tree ids
+        trees_cursor = self.connection.execute(
+            self.sql["vdf_search"][1], (graph,)
+        )
+        while (tree := trees_cursor.fetchone()) is not None:
+            tree = tree[0]
+
+            # push this tree's first vertex
+            hooks.get("before_push", lambda x, y, z: None)(
+                None, None, self.cursor
+            )
+            vertex = self.cursor.execute(
+                self.sql["vdf_search"][2], (current_time, tree, graph, tree)
+            ).fetchone()
+
+            # vertex with id 'tree' was not white
+            if vertex is None:
+                continue
+
+            # fetch vertices growing off current vertex
+            branch_tips = self.cursor.execute(
+                self.sql["vdf_search"][3], (vertex[0], graph)
+            ).fetchall()
+
+            # compute stack height to use below as break condition
+            tree_size = self.cursor.execute(
+                self.sql["vdf_search"][4], (graph, tree)
+            ).fetchone()[0]
+
+            # new tree created, trigger hook
+            hooks.get("new_tree", lambda w, x, y, z: None)(
+                tree_size, vertex, branch_tips, self.cursor
+            )
+
+            # vertex pushed, trigger hook and increment current time
+            hooks.get("after_push", lambda x, y, z: None)(
+                vertex, branch_tips, self.cursor
+            )
+            current_time += 1
+
+            # while the stack is not empty
+            while tree_size > 0:
+
+                # handle any possible cycles
+                hooks.get("iteration_begin", lambda v, w, x, y, z: None)(
+                    tree, current_time, vertex, branch_tips, self.cursor
+                )
+
+                # found an vertex to push
+                if Color.white in (v[2] for v in branch_tips):
+
+                    # depth first doesn't care which vertex to pick
+                    vertex = next(
+                        filter(lambda e: e[2] == Color.white, branch_tips)
+                    )
+
+                    # push this vertex
+                    hooks.get("before_push", lambda x, y, z: None)(
+                        vertex, branch_tips, self.cursor
+                    )
+                    self.cursor.execute(
+                        self.sql["vdf_search"][5],
+                        (current_time, tree, vertex[0]),
+                    )
+
+                    # fetch vertices growing off current vertex
+                    branch_tips = self.cursor.execute(
+                        self.sql["vdf_search"][3], (vertex[0], graph)
+                    ).fetchall()
+                    hooks.get("after_push", lambda x, y, z: None)(
+                        vertex, branch_tips, self.cursor
+                    )
+                    current_time += 1
+                    tree_size += 1
+
+                    # don't enter pop loop
+                    continue
+
+                # no more vertices to push, do a pop loop
+                while Color.white not in (v[2] for v in branch_tips):
+
+                    # pop the vertex
+                    hooks.get("before_pop", lambda x, y, z: None)(
+                        vertex, branch_tips, self.cursor
+                    )
+                    self.cursor.execute(
+                        self.sql["vdf_search"][6], (current_time, vertex[0])
+                    )
+                    current_time += 1
+                    tree_size -= 1
+
+                    # leave pop loop if stack is empty
+                    if tree_size == 0:
+                        break
+
+                    # set vertex to new stack top
+                    vertex = self.cursor.execute(
+                        self.sql["vdf_search"][7], (graph, tree)
+                    ).fetchone()
+
+                    # ask stack top for its branch tips
+                    branch_tips = self.cursor.execute(
+                        self.sql["vdf_search"][3], (vertex[0], graph)
+                    ).fetchall()
+                    hooks.get("after_pop", lambda x, y, z: None)(
+                        vertex, branch_tips, self.cursor
+                    )
+
+                # run return hook
+                if hooks.get("return_early", lambda y, z: False)(
+                    graph, self.cursor
+                ):
+                    self.connection.commit()
+                    trees_cursor.close()
+                    return
+
+        # commit changes and exit
+        self.connection.commit()
+        trees_cursor.close()
+        hooks.get("exit", lambda y, z: None)(graph, self.cursor)
+
+    sql |= {
         "edf_search": [
             """
         UPDATE edge
@@ -1267,7 +1455,7 @@ class Database:
             AND tree = ?
             AND graph_id = ?
         """,
-            "UPDATE graph SET acyclic = 1 WHERE id = ?",
+            "UPDATE graph SET acyclic = 0 WHERE id = ?",
         ]
     }
 
@@ -2563,191 +2751,3 @@ class Database:
 
         # commit and return
         self.connection.commit()
-
-    sql |= {
-        "vdf_search": [
-            """
-        UPDATE vertex
-        SET color = 0, pushed = NULL, popped = NULL
-        WHERE graph_id = ?
-        """,
-            "SELECT id FROM vertex WHERE graph_id = ?",
-            """
-        UPDATE vertex
-        SET color = 1, pushed = ?, tree = ?
-        WHERE graph_id = ? AND id = ? AND color = 0
-        RETURNING id, tree, color, pushed, graph_id
-        """,
-            """
-        SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
-        FROM vertex AS v
-        INNER JOIN edge AS e
-            ON e.child_vertex_id = v.id
-        WHERE
-            v.color = 0
-            AND e.parent_vertex_id = ?
-            AND v.graph_id = ?
-        """,
-            """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = ? AND tree = ? AND color = 1
-        """,
-            """
-        UPDATE vertex
-        SET color = 1, pushed = ?, tree = ?
-        WHERE id = ?
-        """,
-            """
-        UPDATE vertex
-        SET color = 2, popped = ?
-        WHERE id = ?
-        """,
-            """
-        SELECT id, tree, color, pushed, graph_id
-        FROM vertex
-        WHERE graph_id = ? AND pushed = (
-            SELECT MAX(pushed)
-            FROM vertex
-            WHERE tree = ? AND color = 1
-        )
-        """,
-        ]
-    }
-
-    def vdf_search(self: object, graph: str, **hooks: dict) -> None:
-        """"""
-
-        # check for immutability flags set
-        if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
-            raise Exception(
-                f"cannot alter vertices/edges/cycles/cycle edges of '{graph}'"
-            )
-
-        # run enter hook
-        hooks.get("enter", lambda y, z: None)(graph, self.cursor)
-
-        # initialization
-        current_time = 0
-        self.cursor.execute(self.sql["vdf_search"][0], (graph,))
-
-        # vertex ids can be used as a tree ids
-        trees_cursor = self.connection.execute(
-            self.sql["vdf_search"][1], (graph,)
-        )
-        while (tree := trees_cursor.fetchone()) is not None:
-            tree = tree[0]
-
-            # push this tree's first vertex
-            hooks.get("before_push", lambda x, y, z: None)(
-                None, None, self.cursor
-            )
-            vertex = self.cursor.execute(
-                self.sql["vdf_search"][2], (current_time, tree, graph, tree)
-            ).fetchone()
-
-            # vertex with id 'tree' was not white
-            if vertex is None:
-                continue
-
-            # fetch vertices growing off current vertex
-            branch_tips = self.cursor.execute(
-                self.sql["vdf_search"][3], (vertex[0], graph)
-            ).fetchall()
-
-            # compute stack height to use below as break condition
-            tree_size = self.cursor.execute(
-                self.sql["vdf_search"][4], (graph, tree)
-            ).fetchone()[0]
-
-            # new tree created, trigger hook
-            hooks.get("new_tree", lambda w, x, y, z: None)(
-                tree_size, vertex, branch_tips, self.cursor
-            )
-
-            # vertex pushed, trigger hook and increment current time
-            hooks.get("after_push", lambda x, y, z: None)(
-                vertex, branch_tips, self.cursor
-            )
-            current_time += 1
-
-            # while the stack is not empty
-            while tree_size > 0:
-
-                # handle any possible cycles
-                hooks.get("iteration_begin", lambda v, w, x, y, z: None)(
-                    tree, current_time, vertex, branch_tips, self.cursor
-                )
-
-                # found an vertex to push
-                if Color.white in (v[2] for v in branch_tips):
-
-                    # depth first doesn't care which vertex to pick
-                    vertex = next(
-                        filter(lambda e: e[2] == Color.white, branch_tips)
-                    )
-
-                    # push this vertex
-                    hooks.get("before_push", lambda x, y, z: None)(
-                        vertex, branch_tips, self.cursor
-                    )
-                    self.cursor.execute(
-                        self.sql["vdf_search"][5],
-                        (current_time, tree, vertex[0]),
-                    )
-
-                    # fetch vertices growing off current vertex
-                    branch_tips = self.cursor.execute(
-                        self.sql["vdf_search"][3], (vertex[0], graph)
-                    ).fetchall()
-                    hooks.get("after_push", lambda x, y, z: None)(
-                        vertex, branch_tips, self.cursor
-                    )
-                    current_time += 1
-                    tree_size += 1
-
-                    # don't enter pop loop
-                    continue
-
-                # no more vertices to push, do a pop loop
-                while Color.white not in (v[2] for v in branch_tips):
-
-                    # pop the vertex
-                    hooks.get("before_pop", lambda x, y, z: None)(
-                        vertex, branch_tips, self.cursor
-                    )
-                    self.cursor.execute(
-                        self.sql["vdf_search"][6], (current_time, vertex[0])
-                    )
-                    current_time += 1
-                    tree_size -= 1
-
-                    # leave pop loop if stack is empty
-                    if tree_size == 0:
-                        break
-
-                    # set vertex to new stack top
-                    vertex = self.cursor.execute(
-                        self.sql["vdf_search"][7], (graph, tree)
-                    ).fetchone()
-
-                    # ask stack top for its branch tips
-                    branch_tips = self.cursor.execute(
-                        self.sql["vdf_search"][3], (vertex[0], graph)
-                    ).fetchall()
-                    hooks.get("after_pop", lambda x, y, z: None)(
-                        vertex, branch_tips, self.cursor
-                    )
-
-                # run return hook
-                if hooks.get("return_early", lambda y, z: False)(
-                    graph, self.cursor
-                ):
-                    self.connection.commit()
-                    trees_cursor.close()
-                    return
-
-        # commit changes and exit
-        self.connection.commit()
-        trees_cursor.close()
-        hooks.get("exit", lambda y, z: None)(graph, self.cursor)

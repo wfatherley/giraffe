@@ -380,6 +380,11 @@ class TestDFFindCycles(FreshModelTestCase):
         db.create_peterson("test")
         db.find_cycles("test")
 
+        # not acyclic, is cyclic
+        self.assertEqual(
+            db.cursor.execute("SELECT acyclic FROM graph WHERE id = 'test'").fetchone(), (0,)
+        )
+
         # has two cycles
         self.assertEqual(
             db.cursor.execute("SELECT COUNT(*) FROM cycle").fetchone()[0], 2
@@ -415,6 +420,11 @@ class TestDFFindCycles(FreshModelTestCase):
         db = giraffe.Database(self.con)
         db.create_frucht("test")
         db.find_cycles("test")
+
+        # not acyclic, is cyclic
+        self.assertEqual(
+            db.cursor.execute("SELECT acyclic FROM graph WHERE id = 'test'").fetchone(), (0,)
+        )
 
         # has two cycles
         self.assertEqual(
@@ -480,6 +490,11 @@ class TestDFFindCycles(FreshModelTestCase):
             {"parent_vertex_id": 14, "child_vertex_id": 0},
         )
         db.find_cycles("test")
+
+        # not acyclic, is cyclic
+        self.assertEqual(
+            db.cursor.execute("SELECT acyclic FROM graph WHERE id = 'test'").fetchone(), (0,)
+        )
 
         # has two cycles
         self.assertEqual(
