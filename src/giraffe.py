@@ -16,6 +16,7 @@ such as :method:`giraffe.Database.topological_sort`.
 
 import json
 import math
+
 # import string
 # import sys
 
@@ -135,7 +136,7 @@ class Database:
         the connection's ``paramstyle`` attribute.
     """
 
-    sql = {
+    sql: dict = {
         "model": """
         CREATE TABLE graph(
 
@@ -243,7 +244,7 @@ class Database:
 
         """
     }
-    model = sql["model"]
+    model: str = sql["model"]
 
     def __init__(self, connection: object) -> None:
         """

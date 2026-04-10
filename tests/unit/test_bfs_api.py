@@ -1,6 +1,7 @@
 import functools
 import inspect
 import itertools
+import math
 
 import giraffe
 
@@ -779,6 +780,70 @@ class TestMaximumFlow(FreshModelTestCase):
                 (7, 19),
                 (8, 7),
                 (9, 4)
+            ]
+        )
+
+    def test_handle_cormen_etal_super_example(self):
+        """"""
+        db = giraffe.Database(self.con)
+        db.create_graph("test", 1, 0)
+        _ = db.add_vertices("test", *[{} for _ in range(14)])
+        _ = db.add_edges(
+            "test",
+            {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[2], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[3], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[4], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[0], "child_vertex_id": _[5], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[12], "child_vertex_id": _[13], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[11], "child_vertex_id": _[13], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[10], "child_vertex_id": _[13], "mf_capacity": math.inf},
+            {"parent_vertex_id": _[1], "child_vertex_id": _[6], "mf_capacity": 10},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[6], "mf_capacity": 12},
+            {"parent_vertex_id": _[2], "child_vertex_id": _[7], "mf_capacity": 5},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[7], "mf_capacity": 8},
+            {"parent_vertex_id": _[3], "child_vertex_id": _[8], "mf_capacity": 14},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[8], "mf_capacity": 7},
+            {"parent_vertex_id": _[4], "child_vertex_id": _[9], "mf_capacity": 11},
+            {"parent_vertex_id": _[5], "child_vertex_id": _[9], "mf_capacity": 2},
+            {"parent_vertex_id": _[6], "child_vertex_id": _[10], "mf_capacity": 3},
+            {"parent_vertex_id": _[7], "child_vertex_id": _[10], "mf_capacity": 15},
+            {"parent_vertex_id": _[7], "child_vertex_id": _[11], "mf_capacity": 6},
+            {"parent_vertex_id": _[8], "child_vertex_id": _[11], "mf_capacity": 20},
+            {"parent_vertex_id": _[8], "child_vertex_id": _[12], "mf_capacity": 13},
+            {"parent_vertex_id": _[9], "child_vertex_id": _[12], "mf_capacity": 18}
+        )
+        db.maximum_flow("test", 0, 13)
+        self.assertEqual(
+            db.cursor.execute(
+                """
+                SELECT id, mf_flow
+                FROM edge
+                """
+            ).fetchall(),
+            [
+                (0, 3),
+                (1, 5),
+                (2, 22),
+                (3, 18),
+                (4, 2),
+                (5, 14),
+                (6, 20),
+                (7, 16),
+                (8, 3),
+                (9, 0),
+                (10, 5),
+                (11, 8),
+                (12, 14),
+                (13, 7),
+                (14, 11),
+                (15, 2),
+                (16, 3),
+                (17, 13),
+                (18, 0),
+                (19, 20),
+                (20, 1),
+                (21, 13)
             ]
         )
 
