@@ -4,6 +4,7 @@ import itertools
 import math
 
 import giraffe
+import sqlalchemy
 
 from . import FreshModelTestCase
 
@@ -42,33 +43,28 @@ class TestEBFSearch(FreshModelTestCase):
 
     def test_raise_on_immutable_graph(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1)
+        self.db.create_graph("test", 1)
 
         for i in range(1, 5):
             for c in itertools.combinations(
                 [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
             ):
                 flags = functools.reduce(lambda x, y: x | y, c)
-                db.cursor.execute("UPDATE graph SET mode = ?", (flags,))
-                db.connection.commit()
+                self.db.connection.execute(sqlalchemy.text("UPDATE graph SET mode = :mode"), {"mode": flags})
                 with self.assertRaises(Exception):
-                    db.ebf_search("x")
+                    self.db.ebf_search("x")
 
     def test_raise_with_bad_start_vertex(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1)
+        self.db.create_graph("test", 1)
         with self.assertRaises(Exception):
-            db.ebf_search("test", 2)
+            self.db.ebf_search("test", 2)
 
     def test_handle_cormen_etal_example(self):
         """"""
-
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(8)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(8)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
             {"parent_vertex_id": _[0], "child_vertex_id": _[4]},
@@ -81,10 +77,10 @@ class TestEBFSearch(FreshModelTestCase):
             {"parent_vertex_id": _[5], "child_vertex_id": _[6]},
             {"parent_vertex_id": _[6], "child_vertex_id": _[7]},
         )
-        db.ebf_search("test", 1)
+        self.db.ebf_search("test", 1)
         self.assertEqual(
-            db.cursor.execute(
-                "SELECT id, predecessor FROM edge"
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT id, predecessor FROM edge")
             ).fetchall(),
             [
                 (0, 1),
@@ -102,10 +98,9 @@ class TestEBFSearch(FreshModelTestCase):
 
     def test_handle_weird_peterson(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(10)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(10)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2]},
@@ -123,10 +118,10 @@ class TestEBFSearch(FreshModelTestCase):
             {"parent_vertex_id": _[3], "child_vertex_id": _[9]},
             {"parent_vertex_id": _[4], "child_vertex_id": _[5]},
         )
-        db.ebf_search("test", 0)
+        self.db.ebf_search("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                "SELECT id, predecessor FROM edge"
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT id, predecessor FROM edge")
             ).fetchall(),
             [
                 (0, None),
@@ -149,12 +144,11 @@ class TestEBFSearch(FreshModelTestCase):
 
     def test_handle_peterson(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_peterson("test")
-        db.ebf_search("test", 0)
+        self.db.create_peterson("test")
+        self.db.ebf_search("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                "SELECT id, predecessor FROM edge"
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT id, predecessor FROM edge")
             ).fetchall(),
             [
                 (0, None),
@@ -177,12 +171,11 @@ class TestEBFSearch(FreshModelTestCase):
 
     def test_handle_frucht(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_frucht("test")
-        db.ebf_search("test", 0)
+        self.db.create_frucht("test")
+        self.db.ebf_search("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                "SELECT id, predecessor FROM edge"
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT id, predecessor FROM edge")
             ).fetchall(),
             [
                 (0, None),
@@ -245,32 +238,29 @@ class TestVBFSearch(FreshModelTestCase):
 
     def test_raise_on_immutable_graph(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1)
+        self.db.create_graph("test", 1)
 
         for i in range(1, 5):
             for c in itertools.combinations(
                 [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
             ):
                 flags = functools.reduce(lambda x, y: x | y, c)
-                db.cursor.execute("UPDATE graph SET mode = ?", (flags,))
-                db.connection.commit()
+                self.db.connection.execute(sqlalchemy.text("UPDATE graph SET mode = :flags"), {"flags": flags})
+                self.db.connection.commit()
                 with self.assertRaises(Exception):
-                    db.vbf_search("x")
+                    self.db.vbf_search("x")
 
     def test_raise_with_bad_start_vertex(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1)
+        self.db.create_graph("test", 1)
         with self.assertRaises(Exception):
-            db.vbf_search("test", 2)
+            self.db.vbf_search("test", 2)
 
     def test_handle_cormen_etal_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(8)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(8)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
             {"parent_vertex_id": _[0], "child_vertex_id": _[4]},
@@ -283,13 +273,13 @@ class TestVBFSearch(FreshModelTestCase):
             {"parent_vertex_id": _[5], "child_vertex_id": _[6]},
             {"parent_vertex_id": _[6], "child_vertex_id": _[7]},
         )
-        db.vbf_search("test", 1)
+        self.db.vbf_search("test", 1)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, 2, 1, 1),
@@ -305,10 +295,9 @@ class TestVBFSearch(FreshModelTestCase):
 
     def test_handle_weird_peterson(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(10)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(10)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2]},
@@ -326,13 +315,13 @@ class TestVBFSearch(FreshModelTestCase):
             {"parent_vertex_id": _[3], "child_vertex_id": _[9]},
             {"parent_vertex_id": _[4], "child_vertex_id": _[5]},
         )
-        db.vbf_search("test", 0)
+        self.db.vbf_search("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, 2, None, 0),
@@ -350,15 +339,14 @@ class TestVBFSearch(FreshModelTestCase):
 
     def test_handle_peterson(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_peterson("test")
-        db.vbf_search("test", 0)
+        self.db.create_peterson("test")
+        self.db.vbf_search("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, 2, None, 0),
@@ -376,15 +364,14 @@ class TestVBFSearch(FreshModelTestCase):
 
     def test_handle_frucht(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_frucht("test")
-        db.vbf_search("test", 0)
+        self.db.create_frucht("test")
+        self.db.vbf_search("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, 2, None, 0),
@@ -437,10 +424,9 @@ class TestMinimumSpanningTree(FreshModelTestCase):
 
     def test_handle_cormen_et_al_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(9)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(9)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "weight": 4},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2], "weight": 8},
@@ -457,13 +443,13 @@ class TestMinimumSpanningTree(FreshModelTestCase):
             {"parent_vertex_id": _[2], "child_vertex_id": _[5], "weight": 4},
             {"parent_vertex_id": _[3], "child_vertex_id": _[5], "weight": 14}
         )
-        db.minimum_spanning_tree("test", 0)
+        self.db.minimum_spanning_tree("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, predecessor
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, None),
@@ -480,10 +466,9 @@ class TestMinimumSpanningTree(FreshModelTestCase):
 
     def test_handle_modified_cormen_et_al_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(9)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(9)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "weight": 4},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2], "weight": 8},
@@ -500,13 +485,13 @@ class TestMinimumSpanningTree(FreshModelTestCase):
             {"parent_vertex_id": _[2], "child_vertex_id": _[5], "weight": 4},
             {"parent_vertex_id": _[3], "child_vertex_id": _[5], "weight": 14}
         )
-        db.minimum_spanning_tree("test", 0)
+        self.db.minimum_spanning_tree("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, predecessor
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, None),
@@ -523,10 +508,9 @@ class TestMinimumSpanningTree(FreshModelTestCase):
 
     def test_handle_weird_peterson(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(10)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(10)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "weight": 1},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2], "weight": 5},
@@ -544,10 +528,10 @@ class TestMinimumSpanningTree(FreshModelTestCase):
             {"parent_vertex_id": _[3], "child_vertex_id": _[9], "weight": 9},
             {"parent_vertex_id": _[4], "child_vertex_id": _[5], "weight": 2},
         )
-        db.minimum_spanning_tree("test", 0)
+        self.db.minimum_spanning_tree("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                "SELECT id, predecessor FROM vertex"
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT id, predecessor FROM vertex")
             ).fetchall(),
             [
                 (0, None),
@@ -598,10 +582,9 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
 
     def test_handle_cormen_et_al_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(5)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(5)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "weight": 10},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2], "weight": 1},
@@ -614,13 +597,13 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
             {"parent_vertex_id": _[4], "child_vertex_id": _[1], "weight": 3},
             {"parent_vertex_id": _[1], "child_vertex_id": _[4], "weight": 2}
         )
-        db.single_source_shortest_path("test", 0)
+        self.db.single_source_shortest_path("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, predecessor, sp_estimate
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, None, 0),
@@ -633,10 +616,9 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
 
     def test_handle_modifed_cormen_et_al_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(5)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(5)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "weight": 10},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2], "weight": 1},
@@ -649,13 +631,13 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
             {"parent_vertex_id": _[4], "child_vertex_id": _[1], "weight": 3},
             {"parent_vertex_id": _[1], "child_vertex_id": _[4], "weight": 2}
         )
-        db.single_source_shortest_path("test", 0)
+        self.db.single_source_shortest_path("test", 0)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, predecessor, sp_estimate
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, None, 0),
@@ -703,13 +685,11 @@ class TestMaximumFlow(FreshModelTestCase):
         self.assertEqual(sink_vertex_id.default, sink_vertex_id.empty)
         self.assertEqual(sink_vertex_id.kind, sink_vertex_id.POSITIONAL_OR_KEYWORD)
 
-    # TODO: verify agianst other libraries
     def test_handle_cormen_et_al_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(6)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(6)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": 16},
             {"parent_vertex_id": _[0], "child_vertex_id": _[2], "mf_capacity": 13},
@@ -721,13 +701,13 @@ class TestMaximumFlow(FreshModelTestCase):
             {"parent_vertex_id": _[4], "child_vertex_id": _[3], "mf_capacity": 7},
             {"parent_vertex_id": _[4], "child_vertex_id": _[5], "mf_capacity": 4}
         )
-        db.maximum_flow("test", 0, 5)
+        self.db.maximum_flow("test", 0, 5)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, mf_flow
                 FROM edge
-                """
+                """)
             ).fetchall(),
             [
                 (0, 12),
@@ -742,13 +722,11 @@ class TestMaximumFlow(FreshModelTestCase):
             ]
         )
 
-    # TODO: verify agianst other libraries
     def test_handle_cormen_et_al_antiparallel_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(6)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(6)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": 16},
             {"parent_vertex_id": _[0], "child_vertex_id": _[2], "mf_capacity": 13},
@@ -761,13 +739,13 @@ class TestMaximumFlow(FreshModelTestCase):
             {"parent_vertex_id": _[4], "child_vertex_id": _[3], "mf_capacity": 7},
             {"parent_vertex_id": _[4], "child_vertex_id": _[5], "mf_capacity": 4}
         )
-        db.maximum_flow("test", 0, 5)
+        self.db.maximum_flow("test", 0, 5)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, mf_flow
                 FROM edge
-                """
+                """)
             ).fetchall(),
             [
                 (0, 12),
@@ -785,10 +763,9 @@ class TestMaximumFlow(FreshModelTestCase):
 
     def test_handle_cormen_etal_super_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(14)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(14)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": math.inf},
             {"parent_vertex_id": _[0], "child_vertex_id": _[2], "mf_capacity": math.inf},
@@ -813,13 +790,13 @@ class TestMaximumFlow(FreshModelTestCase):
             {"parent_vertex_id": _[8], "child_vertex_id": _[12], "mf_capacity": 13},
             {"parent_vertex_id": _[9], "child_vertex_id": _[12], "mf_capacity": 18}
         )
-        db.maximum_flow("test", 0, 13)
+        self.db.maximum_flow("test", 0, 13)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, mf_flow
                 FROM edge
-                """
+                """)
             ).fetchall(),
             [
                 (0, 3),
@@ -886,10 +863,9 @@ class TestFlowNetworkWalkVBF(FreshModelTestCase):
 
     def test_handle_cormen_etal_example(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1, 0)
-        _ = db.add_vertices("test", *[{} for _ in range(6)])
-        _ = db.add_edges(
+        self.db.create_graph("test", 1, 0)
+        _ = self.db.add_vertices("test", *[{} for _ in range(6)])
+        _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1], "mf_capacity": 16},
             {"parent_vertex_id": _[0], "child_vertex_id": _[2], "mf_capacity": 13},
@@ -903,13 +879,13 @@ class TestFlowNetworkWalkVBF(FreshModelTestCase):
         )
 
         # test augmenting path with one of sink's edges
-        db.flow_network_walk_vbf("test", 0, 5)
+        self.db.flow_network_walk_vbf("test", 0, 5)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, 2, None, 0),
@@ -922,14 +898,14 @@ class TestFlowNetworkWalkVBF(FreshModelTestCase):
         )
 
         # test augmenting path with the other edge
-        db.alter_edge(6, mf_flow=21)
-        db.flow_network_walk_vbf("test", 0, 5)
+        self.db.alter_edge(6, mf_flow=21)
+        self.db.flow_network_walk_vbf("test", 0, 5)
         self.assertEqual(
-            db.cursor.execute(
-                """
+            self.db.connection.execute(
+                sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
-                """
+                """)
             ).fetchall(),
             [
                 (0, 2, None, 0),

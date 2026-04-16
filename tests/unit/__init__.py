@@ -2,6 +2,7 @@ import sqlite3
 import unittest
 
 import giraffe
+import sqlalchemy
 
 
 class FreshModelTestCase(unittest.TestCase):
@@ -9,12 +10,13 @@ class FreshModelTestCase(unittest.TestCase):
 
     def setUp(self):
         """"""
-
-        # a default connection
-        self.con = sqlite3.connect(":memory:", autocommit=False)
-        for table_definition in giraffe.Database.model.split(";"):
-            _ = self.con.execute(table_definition.strip())
+        self.engine = sqlalchemy.create_engine("sqlite:///:memory:")
+        self.db = giraffe.Database(self.engine)
+        self.db.load_schema()
 
     def tearDown(self):
         """"""
-        self.con.close()
+        self.db.close()
+        self.engine.dispose()
+        self.engine = None
+        self.db = None

@@ -5,20 +5,6 @@ import unittest
 
 import giraffe
 
-from . import FreshModelTestCase
-
-
-class TestModel(unittest.TestCase):
-    """"""
-
-    def test_executes_with_sqlite3(self):
-        """"""
-        con = sqlite3.connect(":memory:", autocommit=False)
-        for relation in giraffe.Database.sql["model"].split(";"):
-            con.execute(relation)
-        con.commit()
-        con.close()
-
 
 class TestColor(unittest.TestCase):
     """"""
@@ -40,7 +26,7 @@ class TestColor(unittest.TestCase):
         self.assertEqual(2, giraffe.Color.black)
 
 
-class TestEdgeODictFactory(FreshModelTestCase):
+class TestEdgeODictFactory(unittest.TestCase):
     """"""
 
     def test_is_in_giraffe(self):
@@ -61,7 +47,7 @@ class TestEdgeODictFactory(FreshModelTestCase):
         self.assertIsInstance(giraffe.edge_odict_factory(), collections.OrderedDict)
 
 
-class TestVertexODictFactory(FreshModelTestCase):
+class TestVertexODictFactory(unittest.TestCase):
     """"""
 
     def test_is_in_giraffe(self):

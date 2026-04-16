@@ -3,6 +3,7 @@ import inspect
 from . import FreshModelTestCase
 
 import giraffe
+import sqlalchemy
 
 
 class TestTranspose(FreshModelTestCase):
@@ -43,38 +44,45 @@ class TestTranspose(FreshModelTestCase):
 
     def test_raise_if_target_graph_edges_are_immutable(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", directed=1, mode=giraffe.EDIM)
+        self.db.create_graph("test", directed=1, mode=giraffe.EDIM)
         with self.assertRaises(Exception):
-            db.transpose("test")
+            self.db.transpose("test")
 
     def test_handle_two_vertex_graph(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1)
-        _ = db.add_vertices("test", *[{} for _ in range(2)])
-        db.add_edges("test", {"parent_vertex_id": _[0], "child_vertex_id": _[1]})
+        self.db.create_graph("test", 1)
+        _ = self.db.add_vertices("test", *[{} for _ in range(2)])
+        self.db.add_edges(
+            "test", {"parent_vertex_id": _[0], "child_vertex_id": _[1]}
+        )
 
-        transposed = db.transpose("test")
+        transposed = self.db.transpose("test")
 
         # verify transposed graph record is correct
-        transposed_graph = db.cursor.execute(
-            "SELECT acyclic, directed, metadata FROM graph WHERE id = ?",
-            (transposed,),
+        transposed_graph = self.db.connection.execute(
+            sqlalchemy.text(
+                "SELECT acyclic, directed, metadata FROM graph WHERE id = :id"
+            ),
+            {"id": transposed},
         ).fetchone()
         self.assertEqual(transposed_graph, (None, 1, '{"graph": "test"}'))
 
         # verify transposed vertices are correct
-        transposed_vertices = db.cursor.execute(
-            "SELECT metadata FROM vertex WHERE graph_id = ?", (transposed,)
+        transposed_vertices = self.db.connection.execute(
+            sqlalchemy.text(
+                "SELECT metadata FROM vertex WHERE graph_id = :graph_id"
+            ),
+            {"graph_id": transposed},
         ).fetchall()
         self.assertIn(('{"graph": "test", "vertex": 0}',), transposed_vertices)
         self.assertIn(('{"graph": "test", "vertex": 1}',), transposed_vertices)
 
         # verify transpose edge is correct
-        transposed_edge = db.cursor.execute(
-            "SELECT id, parent_vertex_id, child_vertex_id, metadata FROM edge WHERE graph_id = ?",
-            (transposed,),
+        transposed_edge = self.db.connection.execute(
+            sqlalchemy.text(
+                "SELECT id, parent_vertex_id, child_vertex_id, metadata FROM edge WHERE graph_id = :graph_id"
+            ),
+            {"graph_id": transposed},
         ).fetchone()
         self.assertEqual(
             transposed_edge[1:], (_[1], _[0], '{"graph": "test", "edge": 0}')
@@ -83,45 +91,53 @@ class TestTranspose(FreshModelTestCase):
         # verify original edge is correct
         self.assertEqual(
             transposed_edge[0],
-            db.cursor.execute(
-                "SELECT transpose_id FROM edge WHERE graph_id = 'test'"
-            ).fetchone()[0],
+            self.db.connection.execute(
+                sqlalchemy.text(
+                    "SELECT transpose_id FROM edge WHERE graph_id = 'test'"
+                )
+            ).scalar_one(),
         )
 
     def test_handle_three_vertex_graph_with_cycle(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test", 1)
-        _ = db.add_vertices("test", *[{} for _ in range(3)])
-        db.add_edges(
+        self.db.create_graph("test", 1)
+        _ = self.db.add_vertices("test", *[{} for _ in range(3)])
+        self.db.add_edges(
             "test",
             {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
             {"parent_vertex_id": _[1], "child_vertex_id": _[2]},
             {"parent_vertex_id": _[2], "child_vertex_id": _[0]},
         )
-        # db.df_find_cycles("test")
+        # self.db.df_find_cycles("test")
 
-        transposed = db.transpose("test")
+        transposed = self.db.transpose("test")
 
         # verify transposed graph record is correct
-        transposed_graph = db.cursor.execute(
-            "SELECT acyclic, directed, metadata FROM graph WHERE id = ?",
-            (transposed,),
+        transposed_graph = self.db.connection.execute(
+            sqlalchemy.text(
+                "SELECT acyclic, directed, metadata FROM graph WHERE id = :id"
+            ),
+            {"id": transposed},
         ).fetchone()
         self.assertEqual(transposed_graph, (None, 1, '{"graph": "test"}'))
 
         # verify transposed vertices are correct
-        transposed_vertices = db.cursor.execute(
-            "SELECT metadata FROM vertex WHERE graph_id = ?", (transposed,)
+        transposed_vertices = self.db.connection.execute(
+            sqlalchemy.text(
+                "SELECT metadata FROM vertex WHERE graph_id = :graph_id"
+            ),
+            {"graph_id": transposed},
         ).fetchall()
         self.assertIn(('{"graph": "test", "vertex": 0}',), transposed_vertices)
         self.assertIn(('{"graph": "test", "vertex": 1}',), transposed_vertices)
         self.assertIn(('{"graph": "test", "vertex": 2}',), transposed_vertices)
 
         # verify transpose edge is correct
-        transposed_edges = db.cursor.execute(
-            "SELECT id, parent_vertex_id, child_vertex_id, metadata FROM edge WHERE graph_id = ?",
-            (transposed,),
+        transposed_edges = self.db.connection.execute(
+            sqlalchemy.text(
+                "SELECT id, parent_vertex_id, child_vertex_id, metadata FROM edge WHERE graph_id = :graph_id"
+            ),
+            {"graph_id": transposed},
         ).fetchall()
         for transposed_edge in transposed_edges:
             self.assertIn(
@@ -135,8 +151,10 @@ class TestTranspose(FreshModelTestCase):
 
             # verify original edges has a transposed id
             self.assertTrue(
-                db.cursor.execute(
-                    "SELECT id FROM edge WHERE transpose_id = ?",
-                    (transposed_edge[0],),
+                self.db.connection.execute(
+                    sqlalchemy.text(
+                        "SELECT id FROM edge WHERE transpose_id = :transpose_id"
+                    ),
+                    {"transpose_id": transposed_edge[0]},
                 ).fetchone()
             )

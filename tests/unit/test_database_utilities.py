@@ -2,10 +2,51 @@ import functools
 import inspect
 import itertools
 import sys
+import unittest
 
 import giraffe
+import sqlalchemy
 
 from . import FreshModelTestCase
+
+
+class TestLoadSchema(unittest.TestCase):
+    """"""
+
+    def test_is_in_giraffe(self):
+        """"""
+        self.assertIn("load_schema", dir(giraffe.Database))
+
+    def test_is_callable(self):
+        """"""
+        self.assertTrue(callable(giraffe.Database.load_schema))
+
+    def test_signature_unchanged(self):
+        """"""
+
+        # fetch signature
+        s = inspect.signature(giraffe.Database.load_schema)
+
+        # verify parameters are unchanged
+        self.assertEqual(len(s.parameters), 1)
+
+        fles = s.parameters["self"]
+        self.assertEqual(fles.default, fles.empty)
+        self.assertEqual(fles.kind, fles.POSITIONAL_OR_KEYWORD)
+
+    def test_creates_tables(self):
+        """"""
+        engine = sqlalchemy.create_engine("sqlite:///:memory:")
+        db = giraffe.Database(engine)
+        db.load_schema()
+        inspector = sqlalchemy.inspect(engine)
+        self.assertIn("graph", inspector.get_table_names())
+        self.assertIn("vertex", inspector.get_table_names())
+        self.assertIn("edge", inspector.get_table_names())
+        self.assertIn("cycle", inspector.get_table_names())
+        self.assertIn("cycle_edge", inspector.get_table_names())
+        db.close()
+        engine.dispose()
 
 
 class TestClose(FreshModelTestCase):
@@ -34,11 +75,11 @@ class TestClose(FreshModelTestCase):
 
     def test_closes_connection(self):
         """"""
-        db = giraffe.Database(self.con)
-        self.assertEqual(db.cursor.execute("SELECT 1").fetchone()[0], 1)
-        db.close()
-        with self.assertRaises(sys.modules[self.con.__module__].Error):
-            db.cursor.execute("SELECT 1")
+        dql = sqlalchemy.text("SELECT 1")
+        self.assertEqual(self.db.connection.execute(dql).scalar_one(), 1)
+        self.db.close()
+        with self.assertRaises(sqlalchemy.exc.ResourceClosedError):
+            self.db.connection.execute(dql)
 
 
 class TestCheckMode(FreshModelTestCase):
@@ -82,28 +123,31 @@ class TestCheckMode(FreshModelTestCase):
 
     def test_no_graph_mode_always_returns_false(self):
         """"""
-        self.con.execute("INSERT INTO graph (id, directed) VALUES ('x', 0)")
-        db = giraffe.Database(self.con)
-        self.assertFalse(db.check_mode("x"))
+        self.db.connection.execute(
+            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
+        )
+        self.assertFalse(self.db.check_mode("x"))
         for i in range(1, 5):
             for combo in itertools.combinations(
                 [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
             ):
                 flags = functools.reduce(lambda x, y: x | y, combo)
-                self.assertFalse(db.check_mode("x", flags))
+                self.assertFalse(self.db.check_mode("x", flags))
 
     def test_all_flag_combos_return_true(self):
         """"""
-        self.con.execute("INSERT INTO graph (id, directed) VALUES ('x', 0)")
-        db = giraffe.Database(self.con)
+        self.db.connection.execute(
+            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
+        )
         for i in range(1, 5):
             for combo in itertools.combinations(
                 [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
             ):
                 flags = functools.reduce(lambda x, y: x | y, combo)
-                db.cursor.execute("UPDATE graph SET mode = ?", (flags,))
-                db.connection.commit()
-                self.assertTrue(db.check_mode("x", flags))
+                self.db.connection.execute(
+                    sqlalchemy.text("UPDATE graph SET mode = :mode"), {"mode": flags}
+                )
+                self.assertTrue(self.db.check_mode("x", flags))
 
 
 class TestCreateGraph(FreshModelTestCase):
@@ -150,49 +194,44 @@ class TestCreateGraph(FreshModelTestCase):
         self.assertEqual(metadata.default, metadata.empty)
         self.assertEqual(metadata.kind, metadata.VAR_KEYWORD)
 
-    def test_raises_with_no_parameters(self):
+    def test_raises_with_no_directed_parameter(self):
         """"""
-        db = giraffe.Database(self.con)
         with self.assertRaises(Exception):
-            db.create_graph("test_name")
-
-    def test_raises_without_directed(self):
-        """"""
-        db = giraffe.Database(self.con)
-        with self.assertRaises(TypeError):
-            db.create_graph("test_name", acyclic=0, mode=0, metadatum="x")
+            self.db.create_graph("test_name")
 
     def test_creates_directed_graph(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 1)
+        self.db.create_graph("test_graph", 1)
         self.assertEqual(
             [("test_graph", 1, None, None, 0)],
-            db.cursor.execute("SELECT * FROM graph").fetchall(),
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM graph")
+            ).fetchall(),
         )
 
     def test_creates_undirected_graph(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
         self.assertEqual(
             [("test_graph", 0, None, None, 0)],
-            db.cursor.execute("SELECT * FROM graph").fetchall(),
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM graph")
+            ).fetchall(),
         )
 
     def test_raises_pk_constraint_violation(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 0)
-        with self.assertRaises(sys.modules[db.connection.__module__].IntegrityError):
-            db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
+        with self.assertRaises(sqlalchemy.exc.IntegrityError):
+            self.db.create_graph("test_graph", 0)
 
     def test_metadata_created(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("x", 1, bork=1)
+        self.db.create_graph("x", 1, bork=1)
         self.assertEqual(
-            db.cursor.execute("SELECT * FROM graph").fetchall(),
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM graph")
+            ).fetchall(),
             [("x", 1, None, '{"bork": 1}', 0)],
         )
 
@@ -231,43 +270,44 @@ class TestAlterGraph(FreshModelTestCase):
 
     def test_raise_if_altering_using_no_attributes(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create a graph and fetch it with fetchall
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
 
         # alter with no attributes
         with self.assertRaises(Exception):
-            db.alter_graph("test_graph")
+            self.db.alter_graph("test_graph")
 
     def test_raise_if_using_at_least_one_invalid_attribute(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create a graph and fetch it with fetchall
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
 
         # alter with bad attributes
         with self.assertRaises(Exception):
-            db.alter_graph("test_graph", password=7)
+            self.db.alter_graph("test_graph", password=7)
 
     def test_good_attributes_are_inserted(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create a graph and fetch it with fetchall
-        db.create_graph("test_graph", 0)
-        old_db_row = db.cursor.execute("SELECT * FROM graph").fetchone()
+        self.db.create_graph("test_graph", 0)
+        old_db_row = self.db.connection.execute(
+            sqlalchemy.text("SELECT * FROM graph")
+        ).fetchone()
 
         # alter with new attributes
-        db.alter_graph(
+        self.db.alter_graph(
             "test_graph",
             directed=1,
             acyclic=1,
             metadata={"something": 1},
             mode=giraffe.VEIM,
         )
-        new_db_row = db.cursor.execute("SELECT * FROM graph").fetchone()
+        new_db_row = self.db.connection.execute(
+            sqlalchemy.text("SELECT * FROM graph")
+        ).fetchone()
 
         # assert graph id is the same
         self.assertEqual(old_db_row[0], new_db_row[0])
@@ -315,10 +355,20 @@ class TestDeleteGraphs(FreshModelTestCase):
 
     def test_graph_is_deleted(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 0)
-        db.delete_graphs("test_graph")
-        self.assertEqual(db.cursor.execute("SELECT * FROM graph").fetchall(), [])
+        self.db.create_graph("test_graph", 0)
+        self.assertEqual(
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM graph")
+            ).fetchall(),
+            [("test_graph", 0, None, None, 0)],
+        )
+        self.db.delete_graphs("test_graph")
+        self.assertEqual(
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM graph")
+            ).fetchall(),
+            [],
+        )
 
 
 class TestAddVertices(FreshModelTestCase):
@@ -355,24 +405,22 @@ class TestAddVertices(FreshModelTestCase):
 
     def test_raise_if_at_least_one_bad_attribute(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create the graph
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
 
         # try inserting some bad vertices
         with self.assertRaises(Exception):
-            db.add_vertices("test_graph", {7: 8}, {"hi": "bye"})
+            self.db.add_vertices("test_graph", {7: 8}, {"hi": "bye"})
 
     def test_vertices_are_added(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create the graph
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
 
         # add some vertices
-        vertex_ids = db.add_vertices(
+        vertex_ids = self.db.add_vertices(
             "test_graph",
             {"tree": 7, "metadata": {1: 2}},
             {"color": 2, "metadata": {1: 3}},
@@ -383,8 +431,9 @@ class TestAddVertices(FreshModelTestCase):
 
         # fetch the new vertices and assert they are equal to input
         self.assertEqual(
-            db.cursor.execute(
-                "SELECT * FROM vertex WHERE graph_id = 'test_graph'"
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM vertex WHERE graph_id = :graph_id"),
+                {"graph_id": "test_graph"},
             ).fetchall(),
             [
                 (
@@ -461,46 +510,45 @@ class TestAlterVertex(FreshModelTestCase):
 
     def test_raise_if_altering_using_no_attributes(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create a graph and fetch it with fetchall
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {})
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {})
 
         # alter with no attributes
         with self.assertRaises(Exception):
-            db.alter_vertex(vertex_ids[0])
+            self.db.alter_vertex(vertex_ids[0])
 
     def test_raise_if_using_at_least_one_invalid_attribute(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create a graph and fetch it with fetchall
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {})
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {})
 
         # alter with bad attributes
         with self.assertRaises(Exception):
-            db.alter_vertex(vertex_ids[0], password=7)
+            self.db.alter_vertex(vertex_ids[0], password=7)
 
     def test_good_attributes_are_inserted(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create a graph and fetch it with fetchall
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {})
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {})
 
         # assert color is 0
-        color = db.cursor.execute(
-            "SELECT color FROM vertex WHERE id = ?", vertex_ids
+        color = self.db.connection.execute(
+            sqlalchemy.text("SELECT color FROM vertex WHERE id = :vertex_id"),
+            {"vertex_id": vertex_ids[0]},
         ).fetchone()[0]
         self.assertEqual(color, 0)
 
         # alter with new attributes
-        db.alter_vertex(vertex_ids[0], color=1)
-        color = db.cursor.execute(
-            "SELECT color FROM vertex WHERE id = ?", vertex_ids
+        self.db.alter_vertex(vertex_ids[0], color=1)
+        color = self.db.connection.execute(
+            sqlalchemy.text("SELECT color FROM vertex WHERE id = :vertex_id"),
+            {"vertex_id": vertex_ids[0]},
         ).fetchone()[0]
 
         # assert graph id is the same
@@ -537,11 +585,15 @@ class TestDeleteVertices(FreshModelTestCase):
 
     def test_vertex_is_deleted(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {})
-        db.delete_vertices(*vertex_ids)
-        self.assertEqual(db.cursor.execute("SELECT * FROM vertex").fetchall(), [])
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {})
+        self.db.delete_vertices(*vertex_ids)
+        self.assertEqual(
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM vertex")
+            ).fetchall(),
+            [],
+        )
 
 
 class TestAddEdges(FreshModelTestCase):
@@ -578,27 +630,25 @@ class TestAddEdges(FreshModelTestCase):
 
     def test_bad_edge_attributes_raise(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create the graph
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
 
         # try inserting some bad vertices
         with self.assertRaises(Exception):
-            db.add_edges("test_graph", {7: 8}, {"hi": "bye"})
+            self.db.add_edges("test_graph", {7: 8}, {"hi": "bye"})
 
     def test_edges_are_added(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # create the graph
-        db.create_graph("test_graph", 0)
+        self.db.create_graph("test_graph", 0)
 
         # add edges
-        vertex_ids = db.add_vertices("test_graph", {}, {})
+        vertex_ids = self.db.add_vertices("test_graph", {}, {})
 
         # add a vertex whose id is None
-        db.add_edges(
+        self.db.add_edges(
             "test_graph",
             {"parent_vertex_id": vertex_ids[0], "child_vertex_id": vertex_ids[1]},
             {"parent_vertex_id": vertex_ids[0], "child_vertex_id": vertex_ids[0]},
@@ -606,7 +656,9 @@ class TestAddEdges(FreshModelTestCase):
 
         # assert id is autoincrementing
         self.assertEqual(
-            db.cursor.execute("SELECT * FROM edge").fetchall(),
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM edge")
+            ).fetchall(),
             [
                 (
                     0,
@@ -651,10 +703,9 @@ class TestAddEdges(FreshModelTestCase):
 
     def test_raises_fk_constraint_violation(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 0)
-        with self.assertRaises(sys.modules[db.connection.__module__].IntegrityError):
-            db.add_edges("test_graph", {})
+        self.db.create_graph("test_graph", 0)
+        with self.assertRaises(sqlalchemy.exc.IntegrityError):
+            self.db.add_edges("test_graph", {})
 
 
 class TestAlterEdge(FreshModelTestCase):
@@ -691,51 +742,50 @@ class TestAlterEdge(FreshModelTestCase):
 
     def test_raise_if_altering_using_no_attributes(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # alter with no attributes
         with self.assertRaises(Exception):
-            db.alter_edge(1)
+            self.db.alter_edge(1)
 
     def test_raise_if_using_at_least_one_invalid_attribute(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # set up a graph
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {})
-        edge_ids = db.add_edges(
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {})
+        edge_ids = self.db.add_edges(
             "test_graph",
             {"parent_vertex_id": vertex_ids[0], "child_vertex_id": vertex_ids[0]},
         )
 
         # alter graph edge with bad attributes
         with self.assertRaises(Exception):
-            db.alter_edge(edge_ids[0], password=7)
+            self.db.alter_edge(edge_ids[0], password=7)
 
     def test_good_attributes_are_inserted(self):
         """"""
-        db = giraffe.Database(self.con)
 
         # set up a graph
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {})
-        edge_ids = db.add_edges(
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {})
+        edge_ids = self.db.add_edges(
             "test_graph",
             {"parent_vertex_id": vertex_ids[0], "child_vertex_id": vertex_ids[0]},
         )
 
         # assert color is 0
-        color = db.cursor.execute(
-            "SELECT color FROM edge WHERE id = ?", edge_ids
-        ).fetchone()[0]
+        color = self.db.connection.execute(
+            sqlalchemy.text("SELECT color FROM edge WHERE id = :id"),
+            {"id": edge_ids[0]},
+        ).scalar_one()
         self.assertEqual(color, 0)
 
         # alter with new attributes and assert change
-        db.alter_edge(edge_ids[0], color=1)
-        color = db.cursor.execute(
-            "SELECT color FROM edge WHERE id = ?", vertex_ids
-        ).fetchone()[0]
+        self.db.alter_edge(edge_ids[0], color=1)
+        color = self.db.connection.execute(
+            sqlalchemy.text("SELECT color FROM edge WHERE id = :id"),
+            {"id": edge_ids[0]},
+        ).scalar_one()
         self.assertEqual(color, 1)
 
 
@@ -769,12 +819,16 @@ class TestDeleteEdges(FreshModelTestCase):
 
     def test_edge_is_deleted(self):
         """"""
-        db = giraffe.Database(self.con)
-        db.create_graph("test_graph", 0)
-        vertex_ids = db.add_vertices("test_graph", {"tree": 1})
-        edge_ids = db.add_edges(
+        self.db.create_graph("test_graph", 0)
+        vertex_ids = self.db.add_vertices("test_graph", {"tree": 1})
+        edge_ids = self.db.add_edges(
             "test_graph",
             {"parent_vertex_id": vertex_ids[0], "child_vertex_id": vertex_ids[0]},
         )
-        db.delete_edges(*edge_ids)
-        self.assertEqual(db.cursor.execute("SELECT * FROM edge").fetchall(), [])
+        self.db.delete_edges(*edge_ids)
+        self.assertEqual(
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT * FROM edge")
+            ).fetchall(),
+            [],
+        )
