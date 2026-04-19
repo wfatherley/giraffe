@@ -218,7 +218,7 @@ class TestVBFSearch(FreshModelTestCase):
         s = inspect.signature(giraffe.Database.vbf_search)
 
         # verify parameters are unchanged
-        self.assertEqual(len(s.parameters), 4)
+        self.assertEqual(len(s.parameters), 3)
 
         fles = s.parameters["self"]
         self.assertEqual(fles.default, fles.empty)
@@ -231,10 +231,6 @@ class TestVBFSearch(FreshModelTestCase):
         start_vertex_id = s.parameters["start_vertex_id"]
         self.assertEqual(start_vertex_id.default, start_vertex_id.empty)
         self.assertEqual(start_vertex_id.kind, start_vertex_id.POSITIONAL_OR_KEYWORD)
-
-        hooks = s.parameters["hooks"]
-        self.assertEqual(hooks.default, hooks.empty)
-        self.assertEqual(hooks.kind, hooks.VAR_KEYWORD)
 
     def test_raise_on_immutable_graph(self):
         """"""

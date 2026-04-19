@@ -1,17 +1,12 @@
 """A database-oriented library for handling graphs.
 
-Giraffe provides a simple interface, :class:`giraffe.Database`, for
-creating and manipulating graphs that reside in a relational database.
-Given a DBAPI connection (see PEP 249)
+Giraffe uses SQLAlchemy and a simple relational model to store, manipulate, and analyze graphs in a relational database. The model looks like this:
 
 .. raw:: html
 
    <object data="mermaid/model.svg" type="image/svg+xml"></object>
 
 
-Giraffe provides common CRUD-like functions to manage them graphs
-stored with this model, and provides several common analytical methods,
-such as :method:`giraffe.Database.topological_sort`.
 """
 
 import json
@@ -20,7 +15,6 @@ import math
 from collections import OrderedDict
 from enum import IntEnum
 from itertools import groupby
-from typing import Generator
 
 import sqlalchemy
 
@@ -150,7 +144,7 @@ class Database:
 
             PRIMARY KEY (id)
         )
-        """,
+        """, # 0
             """
         CREATE TABLE vertex(
 
@@ -178,7 +172,7 @@ class Database:
                 ON DELETE CASCADE
                 ON UPDATE CASCADE
         )
-        """,
+        """, # 1
             """
         CREATE TABLE edge(
 
@@ -214,7 +208,7 @@ class Database:
                 ON DELETE CASCADE
                 ON UPDATE CASCADE
         )
-        """,
+        """, # 2
             """
         CREATE TABLE cycle(
             graph_id TEXT NOT NULL,
@@ -229,7 +223,7 @@ class Database:
                 ON DELETE CASCADE
                 ON UPDATE CASCADE
         )
-        """,
+        """, # 3
             """
         CREATE TABLE cycle_edge(
             cycle_id NOT NULL,
@@ -242,7 +236,7 @@ class Database:
                 ON DELETE CASCADE
                 ON UPDATE CASCADE
         )
-        """,
+        """, # 4
         ]
     }
 
@@ -264,6 +258,16 @@ class Database:
                 if isinstance(statement, str):
                     self.sql[method][i] = sqlalchemy.text(statement)
 
+    def intrarelational_graphs(self: object, ) -> None:
+        """"""
+        inspector = sqlalchemy.inspect(self.connection.engine)
+        ...
+
+    def interrelational_graphs(self: object) -> None:
+        """"""
+        inspector = sqlalchemy.inspect(self.connection.engine)
+        ...
+
     def close(self: object) -> None:
         """Close the cursor then close the connection.
 
@@ -278,7 +282,11 @@ class Database:
         for ddl in self.sql["model"]:
             self.connection.execute(ddl)
 
-    sql |= {"check_mode": ["SELECT mode FROM graph WHERE id = :id"]}
+    sql |= {
+        "check_mode": [
+            "SELECT mode FROM graph WHERE id = :id" # 0
+        ]
+    }
 
     def check_mode(self: object, graph: str, *flags: list) -> bool:
         """Determine if any of the given "mutability mode" flags are
@@ -315,7 +323,7 @@ class Database:
                 :metadata,
                 :mode
             )
-            """
+            """ # 0
         ]
     }
 
@@ -371,7 +379,7 @@ class Database:
             metadata = :metadata,
             mode = :mode
         WHERE id = :id
-        """,
+        """, # 1
         ]
     }
 
@@ -406,7 +414,11 @@ class Database:
         # update
         self.connection.execute(self.sql["alter_graph"][1], record)
 
-    sql |= {"delete_graphs": ["DELETE FROM graph WHERE id = :id"]}
+    sql |= {
+        "delete_graphs": [
+            "DELETE FROM graph WHERE id = :id" # 0
+        ]
+    }
 
     def delete_graphs(self: object, *names: list[str]) -> None:
         """Delete graphs with the given names.
@@ -421,7 +433,7 @@ class Database:
 
     sql |= {
         "add_vertices": [
-            "SELECT COALESCE(MAX(id), -1) + 1 FROM vertex",
+            "SELECT COALESCE(MAX(id), -1) + 1 FROM vertex", # 0
             """
         INSERT INTO vertex (
             id,
@@ -460,7 +472,7 @@ class Database:
             :mst_key
         )
         RETURNING id
-        """,
+        """, # 1
         ]
     }
 
@@ -518,7 +530,7 @@ class Database:
 
     sql |= {
         "alter_vertex": [
-            "SELECT * FROM vertex WHERE id = :id",
+            "SELECT * FROM vertex WHERE id = :id", # 0
             """
         UPDATE
             vertex
@@ -540,7 +552,7 @@ class Database:
             mst_key = :mst_key
         WHERE
             id = :id
-        """,
+        """, # 1
         ]
     }
 
@@ -580,7 +592,11 @@ class Database:
         # update
         self.connection.execute(self.sql["alter_vertex"][1], record)
 
-    sql |= {"delete_vertices": ["DELETE FROM vertex WHERE id = :id"]}
+    sql |= {
+        "delete_vertices": [
+            "DELETE FROM vertex WHERE id = :id" # 0
+        ]
+    }
 
     def delete_vertices(self: object, *ids: list[str]) -> None:
         """Delete vertices with the given ids.
@@ -594,7 +610,7 @@ class Database:
 
     sql |= {
         "add_edges": [
-            "SELECT COALESCE(MAX(id), -1) + 1 FROM edge",
+            "SELECT COALESCE(MAX(id), -1) + 1 FROM edge", # 0
             """
         INSERT INTO edge (
             id,
@@ -635,7 +651,7 @@ class Database:
             :mf_flow
         )
         RETURNING id
-        """,
+        """, # 1
         ]
     }
 
@@ -689,7 +705,7 @@ class Database:
 
     sql |= {
         "alter_edge": [
-            "SELECT * FROM edge WHERE id = :id",
+            "SELECT * FROM edge WHERE id = :id", # 0
             """
         UPDATE
             edge
@@ -713,7 +729,7 @@ class Database:
 
         WHERE
             id = :id
-        """,
+        """, # 1
         ]
     }
 
@@ -751,7 +767,11 @@ class Database:
         # udpate
         self.connection.execute(self.sql["alter_edge"][1], record)
 
-    sql |= {"delete_edges": ["DELETE FROM edge WHERE id = :id"]}
+    sql |= {
+        "delete_edges": [
+            "DELETE FROM edge WHERE id = :id" # 0
+        ]
+    }
 
     def delete_edges(self: object, *ids: list[str]) -> None:
         """Delete edges with the given ids.
@@ -830,8 +850,8 @@ class Database:
             (SELECT directed FROM graph WHERE id = :id2), 
             :metadata
         )
-        """,
-            "SELECT id FROM vertex WHERE graph_id = :graph_id",
+        """, # 0
+            "SELECT id FROM vertex WHERE graph_id = :graph_id", # 1
             """
         SELECT
             id, parent_vertex_id, child_vertex_id, component_graph_bridge
@@ -839,12 +859,12 @@ class Database:
             edge
         WHERE
             graph_id = :graph_id
-        """,
+        """, # 2
             """
         UPDATE edge
         SET transpose_id = :transpose_id
         WHERE id = :id
-        """,
+        """, # 3
         ]
     }
 
@@ -1941,64 +1961,44 @@ class Database:
             """
         UPDATE vertex
         SET
-            tree = NULL,
             color = 0,
+            tree = NULL,
             predecessor = NULL,
             bf_distance = :bf_distance,
             pushed = NULL
         WHERE graph_id = :graph_id
-        """,
-            """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
-        FROM vertex
-        WHERE graph_id = :graph_id AND id = :id
-        LIMIT 1
-        """,
-            """
-        UPDATE
-            vertex
-        SET
-            color = 1,
-            predecessor = NULL,
-            bf_distance = 0,
-            pushed = :pushed
-        WHERE
-            graph_id = :graph_id AND id = :id
-        """,
+        """, # 0
+            "UPDATE vertex SET pushed = 1, color = 1 WHERE id = :id", # 1
             """
         SELECT COUNT(*)
         FROM vertex
-        WHERE graph_id = :graph_id AND pushed IS NOT NULL
-        """,
+        WHERE graph_id = :graph_id AND pushed > 0 AND color = 1
+        """, # 2
             """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
+        SELECT id, tree, predecessor, bf_distance, pushed
         FROM vertex
-        WHERE graph_id = :graph_id AND pushed IS NOT NULL
+        WHERE graph_id = :graph_id AND color = 1
         ORDER BY pushed ASC
         LIMIT 1
-        """,
+        """, # 3
+            "UPDATE vertex SET color = 2 WHERE id = :id", # 4
             """
-        UPDATE vertex
-        SET color = 2, pushed = NULL
-        WHERE id = :id
-        """,
-            """
-        SELECT id, tree, color, predecessor, bf_distance, pushed
+        SELECT id, tree, predecessor, bf_distance, pushed
         FROM vertex
-        WHERE id IN (
+        WHERE color = 0 AND id IN (
             SELECT child_vertex_id
             FROM edge
-            WHERE parent_vertex_id = :eid
+            WHERE parent_vertex_id = :id
         )
         UNION
-        SELECT id, tree, color, predecessor, bf_distance, pushed
+        SELECT id, tree, predecessor, bf_distance, pushed
         FROM vertex
-        WHERE id IN (
+        WHERE color = 0 AND id IN (
             SELECT parent_vertex_id
             FROM edge
-            WHERE child_vertex_id = :eid
+            WHERE child_vertex_id = :id
         )
-        """,
+        """, # 5
             """
         UPDATE
             vertex
@@ -2006,105 +2006,95 @@ class Database:
             color = 1,
             predecessor = :predecessor,
             bf_distance = :bf_distance,
-            pushed = :pushed
+            pushed = (
+                SELECT MAX(pushed) + 1
+                FROM vertex
+                WHERE graph_id = :graph_id
+            )
         WHERE
             graph_id = :graph_id AND id = :id
-        """,
+        """, # 6
+            "UPDATE vertex SET pushed = NULL WHERE graph_id = :graph_id", # 7
+            """
+        SELECT id, tree, predecessor, bf_distance, NULL AS pushed
+        FROM vertex
+        WHERE id = :id
+        """, # 8
         ]
     }
 
-    def vbf_search(
-        self: object, graph: str, start_vertex_id: int, **hooks: dict
-    ) -> None:
+    def vbf_search(self: object, graph: str, start_vertex_id: int) -> None:
         """"""
 
-        # check for immutability flags set
-        if self.check_mode(graph, VEIM, EDIM, CYIM, CEIM):
-            raise Exception(
-                f"cannot alter vertices/edges/cycles/cycle edges of '{graph}'"
+        def enter(vertex: tuple, graph: str, connection: object) -> None:
+            """"""
+
+            # check for immutability flags set
+            if self.check_mode(graph, VEIM, EDIM):
+                raise Exception(f"cannot alter vertices/edges of '{graph}'")
+
+            # initialize all edges
+            connection.execute(self.sql["vbf_search"][0], {"bf_distance": 0, "graph_id": graph})
+            connection.execute(self.sql["vbf_search"][1], {"id": vertex[0]})
+
+        def loop_condition(graph: str, connection: object) -> bool:
+            """"""
+            return (
+                0
+                < connection.execute(
+                    self.sql["vbf_search"][2], {"graph_id": graph}
+                ).fetchone()[0]
             )
 
-        # run enter hook
-        hooks.get("enter", lambda x, y: None)(graph, self.connection)
-
-        # reset the vertices
-        self.connection.execute(
-            self.sql["vbf_search"][0],
-            {"bf_distance": math.inf, "graph_id": graph},
-        )
-
-        # initialize queue order paramter
-        pushed = 0
-
-        # fetch start vertex
-        s = self.connection.execute(
-            self.sql["vbf_search"][1],
-            {"graph_id": graph, "id": start_vertex_id},
-        ).fetchone()
-        if s is None:
-            raise Exception(
-                f"vertex with id '{start_vertex_id}' not part of {graph}"
-            )
-
-        # push the edge to start
-        hooks.get("before_enqueue", lambda x, y: None)(s, self.connection)
-        self.connection.execute(
-            self.sql["vbf_search"][2],
-            {"pushed": pushed, "graph_id": graph, "id": s[0]},
-        )
-        hooks.get("after_enqueue", lambda x, y: None)(
-            s[:4] + (pushed,), self.connection
-        )
-
-        # while there are vertices to handle
-        while (
-            0
-            < self.connection.execute(
+        def pop(graph: str, connection: object) -> tuple:
+            """"""
+            next_edge = connection.execute(
                 self.sql["vbf_search"][3], {"graph_id": graph}
-            ).fetchone()[0]
-        ):
-
-            # fetch and dequeue the next vertex
-            hooks.get("before_dequeue", lambda x: None)(self.connection)
-            u = self.connection.execute(
-                self.sql["vbf_search"][4], {"graph_id": graph}
             ).fetchone()
-            self.connection.execute(self.sql["vbf_search"][5], {"id": u[0]})
-            hooks.get("after_dequeue", lambda x, y: None)(u, self.connection)
+            connection.execute(self.sql["vbf_search"][4], {"id": next_edge[0]})
+            return next_edge
 
-            # handle its descendents bf
-            for v in self.connection.execute(
-                self.sql["vbf_search"][6], {"eid": u[0]}
-            ).fetchall():
+        def adjacency(vertex: tuple, graph: str, connection: object) -> list:
+            """"""
+            return connection.execute(
+                self.sql["vbf_search"][5], {"id": vertex[0]}
+            ).fetchall()
 
-                # adjacency hook
-                hooks.get("handle_adjacency", lambda x, y, z: None)(
-                    u, v, self.connection
-                )
+        def push(
+            adj_vertex: tuple, vertex: tuple, graph: str, connection: object
+        ) -> None:
+            """"""
+            connection.execute(
+                self.sql["vbf_search"][6],
+                {
+                    "predecessor": vertex[0],
+                    "bf_distance": vertex[3] + 1,
+                    "graph_id": graph,
+                    "id": adj_vertex[0],
+                }
+            )
 
-                if v[2] == Color.white:
-                    pushed += 1
+        def tixe(graph: str, connection: object) -> None:
+            """"""
+            connection.execute(self.sql["vbf_search"][7], {"graph_id": graph})
 
-                    # push descendent onto queue
-                    hooks.get("before_enqueue", lambda x, y: None)(
-                        v, self.connection
-                    )
-                    self.connection.execute(
-                        self.sql["vbf_search"][7],
-                        {
-                            "predecessor": u[0],
-                            "bf_distance": u[4] + 1,
-                            "pushed": pushed,
-                            "graph_id": graph,
-                            "id": v[0],
-                        },
-                    )
-                    hooks.get("after_enqueue", lambda x, y: None)(
-                        v[:4] + (pushed,), self.connection
-                    )
+        # fetch start edge data
+        start_vertex = self.connection.execute(
+            self.sql["vbf_search"][8], {"id": start_vertex_id}
+        ).fetchone()
+        if start_vertex is None:
+            raise Exception(f"vertex '{start_vertex_id}' does not exist")
 
-        # cleanup
-        hooks.get("exit", lambda x, y: None)(graph, self.connection)
+        self.bf_base(
+            graph,
+            start_vertex,
+            enter=enter,
+            loop_condition=loop_condition,
+            pop=pop,
+            adjacency=adjacency,
+            push=push,
+            #exit=tixe,
+        )
 
     sql |= {
         "ebf_search": [
@@ -2613,13 +2603,13 @@ class Database:
             bf_distance = :bf_distance,
             pushed = NULL
         WHERE graph_id = :graph_id
-        """,
+        """, # 0
             """
         SELECT id, tree, color, predecessor, bf_distance, pushed
         FROM vertex
         WHERE graph_id = :graph_id AND id = :id
         LIMIT 1
-        """,
+        """, # 1
             """
         UPDATE
             vertex
@@ -2630,24 +2620,24 @@ class Database:
             pushed = :pushed
         WHERE
             graph_id = :graph_id AND id = :id
-        """,
+        """, # 2
             """
         SELECT COUNT(*)
         FROM vertex
         WHERE graph_id = :graph_id AND pushed IS NOT NULL
-        """,
+        """, # 3
             """
         SELECT id, tree, color, predecessor, bf_distance, pushed
         FROM vertex
         WHERE graph_id = :graph_id AND pushed IS NOT NULL
         ORDER BY pushed ASC
         LIMIT 1
-        """,
+        """, # 4
             """
         UPDATE vertex
         SET color = 2, pushed = NULL
         WHERE id = :id
-        """,
+        """, # 5
             """
         SELECT id, tree, color, predecessor, bf_distance, pushed
         FROM vertex
@@ -2660,7 +2650,7 @@ class Database:
         )
         AND pushed IS NULL
         AND color = 0
-        """,
+        """, # 6
             """
         UPDATE
             vertex
@@ -2671,7 +2661,7 @@ class Database:
             pushed = :pushed
         WHERE
             graph_id = :graph_id AND id = :id
-        """,
+        """, # 7
         ]
     }
 
@@ -2752,7 +2742,7 @@ class Database:
 
     sql |= {
         "maximum_flow": [
-            "UPDATE edge SET mf_flow = 0 WHERE graph_id = :graph_id",
+            "UPDATE edge SET mf_flow = 0 WHERE graph_id = :graph_id", # 0
             """
         SELECT
             id,
@@ -2776,7 +2766,7 @@ class Database:
             graph_id = :graph_id
         ORDER BY
             v1, v2, parent_vertex_id, child_vertex_id
-        """,
+        """, # 1
             """
         WITH RECURSIVE
             path_vertices AS (
@@ -2805,8 +2795,8 @@ class Database:
         SELECT *
         FROM path_edges
         WHERE 1 IN (SELECT * FROM path_complete_flag)
-        """,
-            "UPDATE edge SET mf_flow = :mf_flow WHERE id = :id",
+        """, # 2
+            "UPDATE edge SET mf_flow = :mf_flow WHERE id = :id", # 3
         ]
     }
 
