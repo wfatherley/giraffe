@@ -252,22 +252,6 @@ class Database:
             **execution_options
         )
 
-        # sqlalchemy.text-ify sql statements
-        for method, statements in self.sql.items():
-            for i, statement in enumerate(statements):
-                if isinstance(statement, str):
-                    self.sql[method][i] = sqlalchemy.text(statement)
-
-    def intrarelational_graphs(self: object, ) -> None:
-        """"""
-        inspector = sqlalchemy.inspect(self.connection.engine)
-        ...
-
-    def interrelational_graphs(self: object) -> None:
-        """"""
-        inspector = sqlalchemy.inspect(self.connection.engine)
-        ...
-
     def close(self: object) -> None:
         """Close the cursor then close the connection.
 
@@ -2014,12 +1998,11 @@ class Database:
         WHERE
             graph_id = :graph_id AND id = :id
         """, # 6
-            "UPDATE vertex SET pushed = NULL WHERE graph_id = :graph_id", # 7
             """
         SELECT id, tree, predecessor, bf_distance, NULL AS pushed
         FROM vertex
         WHERE id = :id
-        """, # 8
+        """, # 7
         ]
     }
 
@@ -2074,13 +2057,9 @@ class Database:
                 }
             )
 
-        def tixe(graph: str, connection: object) -> None:
-            """"""
-            connection.execute(self.sql["vbf_search"][7], {"graph_id": graph})
-
         # fetch start edge data
         start_vertex = self.connection.execute(
-            self.sql["vbf_search"][8], {"id": start_vertex_id}
+            self.sql["vbf_search"][7], {"id": start_vertex_id}
         ).fetchone()
         if start_vertex is None:
             raise Exception(f"vertex '{start_vertex_id}' does not exist")
@@ -2092,8 +2071,7 @@ class Database:
             loop_condition=loop_condition,
             pop=pop,
             adjacency=adjacency,
-            push=push,
-            #exit=tixe,
+            push=push
         )
 
     sql |= {
@@ -2885,3 +2863,7 @@ class Database:
                 self.connection.execute(
                     self.sql["maximum_flow"][3], {"mf_flow": f, "id": edge[0]}
                 )
+
+    for method, statements in sql.items():
+        for i, statement in enumerate(statements):
+            sql[method][i] = sqlalchemy.text(statement)

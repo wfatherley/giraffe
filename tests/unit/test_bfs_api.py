@@ -273,19 +273,19 @@ class TestVBFSearch(FreshModelTestCase):
         self.assertEqual(
             self.db.connection.execute(
                 sqlalchemy.text("""
-                SELECT id, color, predecessor, bf_distance
+                SELECT id, color, pushed, predecessor, bf_distance
                 FROM vertex
                 """)
             ).fetchall(),
             [
-                (0, 2, 1, 1),
-                (1, 2, None, 0),
-                (2, 2, 5, 2),
-                (3, 2, 2, 3),
-                (4, 2, 0, 2),
-                (5, 2, 1, 1),
-                (6, 2, 5, 2),
-                (7, 2, 6, 3),
+                (0, 2, 2, 1, 1),
+                (1, 2, 1, None, 0),
+                (2, 2, 5, 5, 2),
+                (3, 2, 7, 2, 3),
+                (4, 2, 4, 0, 2),
+                (5, 2, 3, 1, 1),
+                (6, 2, 6, 5, 2),
+                (7, 2, 8, 6, 3)
             ],
         )
 
@@ -315,21 +315,21 @@ class TestVBFSearch(FreshModelTestCase):
         self.assertEqual(
             self.db.connection.execute(
                 sqlalchemy.text("""
-                SELECT id, color, predecessor, bf_distance
+                SELECT id, color, pushed,predecessor, bf_distance
                 FROM vertex
                 """)
             ).fetchall(),
             [
-                (0, 2, None, 0),
-                (1, 2, 0, 1),
-                (2, 2, 1, 2),
-                (3, 2, 4, 2),
-                (4, 2, 0, 1),
-                (5, 2, 0, 1),
-                (6, 2, 0, 1),
-                (7, 2, 1, 2),
-                (8, 2, 2, 3),
-                (9, 2, 4, 2),
+                (0, 2, 1, None, 0),
+                (1, 2, 2, 0, 1),
+                (2, 2, 6, 1, 2),
+                (3, 2, 8, 4, 2),
+                (4, 2, 3, 0, 1),
+                (5, 2, 4, 0, 1),
+                (6, 2, 5, 0, 1),
+                (7, 2, 7, 1, 2),
+                (8, 2, 10, 2, 3),
+                (9, 2, 9, 4, 2)
             ],
         )
 
