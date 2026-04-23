@@ -80,7 +80,7 @@ class TestEBFSearch(FreshModelTestCase):
         self.db.ebf_search("test", 1)
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id, predecessor FROM edge")
+                sqlalchemy.text("SELECT id, predecessor FROM edge ORDER BY id")
             ).fetchall(),
             [
                 (0, 1),
@@ -121,7 +121,7 @@ class TestEBFSearch(FreshModelTestCase):
         self.db.ebf_search("test", 0)
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id, predecessor FROM edge")
+                sqlalchemy.text("SELECT id, predecessor FROM edge ORDER BY id")
             ).fetchall(),
             [
                 (0, None),
@@ -148,7 +148,7 @@ class TestEBFSearch(FreshModelTestCase):
         self.db.ebf_search("test", 0)
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id, predecessor FROM edge")
+                sqlalchemy.text("SELECT id, predecessor FROM edge ORDER BY id")
             ).fetchall(),
             [
                 (0, None),
@@ -175,7 +175,7 @@ class TestEBFSearch(FreshModelTestCase):
         self.db.ebf_search("test", 0)
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id, predecessor FROM edge")
+                sqlalchemy.text("SELECT id, predecessor FROM edge ORDER BY id")
             ).fetchall(),
             [
                 (0, None),
@@ -275,6 +275,7 @@ class TestVBFSearch(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, color, pushed, predecessor, bf_distance
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -317,6 +318,7 @@ class TestVBFSearch(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, color, pushed,predecessor, bf_distance
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -342,6 +344,7 @@ class TestVBFSearch(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -367,6 +370,7 @@ class TestVBFSearch(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -445,6 +449,7 @@ class TestMinimumSpanningTree(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, predecessor
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -487,6 +492,7 @@ class TestMinimumSpanningTree(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, predecessor
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -527,7 +533,7 @@ class TestMinimumSpanningTree(FreshModelTestCase):
         self.db.minimum_spanning_tree("test", 0)
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id, predecessor FROM vertex")
+                sqlalchemy.text("SELECT id, predecessor FROM vertex ORDER BY id")
             ).fetchall(),
             [
                 (0, None),
@@ -599,6 +605,7 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, predecessor, sp_estimate
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -633,6 +640,7 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, predecessor, sp_estimate
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -703,6 +711,7 @@ class TestMaximumFlow(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, mf_flow
                 FROM edge
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -741,6 +750,7 @@ class TestMaximumFlow(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, mf_flow
                 FROM edge
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -792,6 +802,7 @@ class TestMaximumFlow(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, mf_flow
                 FROM edge
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -881,6 +892,7 @@ class TestFlowNetworkWalkVBF(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [
@@ -901,6 +913,7 @@ class TestFlowNetworkWalkVBF(FreshModelTestCase):
                 sqlalchemy.text("""
                 SELECT id, color, predecessor, bf_distance
                 FROM vertex
+                ORDER BY id
                 """)
             ).fetchall(),
             [

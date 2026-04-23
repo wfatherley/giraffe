@@ -42,37 +42,46 @@ class TestEDFSearch(FreshModelTestCase):
 
     def test_raise_on_immutable_graph(self):
         """"""
-        self.db.connection.execute(sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)"))
+        self.db.connection.execute(
+            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
+        )
 
         for i in range(1, 5):
             for c in itertools.combinations(
                 [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
             ):
                 flags = functools.reduce(lambda x, y: x | y, c)
-                self.db.connection.execute(sqlalchemy.text("UPDATE graph SET mode = :mode"), {"mode": flags})
+                self.db.connection.execute(
+                    sqlalchemy.text("UPDATE graph SET mode = :mode"),
+                    {"mode": flags},
+                )
                 with self.assertRaises(Exception):
                     self.db.edf_search("x")
 
     def test_do_nothing_with_empty_graph(self):
         """"""
-        self.db.connection.execute(sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('test', 0)"))
+        self.db.connection.execute(
+            sqlalchemy.text(
+                "INSERT INTO graph (id, directed) VALUES ('test', 0)"
+            )
+        )
         self.assertIs(self.db.edf_search("test"), None)
 
     def test_handle_single_self_loop(self):
         """"""
         self.db.create_graph("test", 1, 0)
         self.db.add_vertices("test", {})
-        self.db.add_edges("test", {"parent_vertex_id": 0, "child_vertex_id": 0})
+        self.db.add_edges(
+            "test", {"parent_vertex_id": 0, "child_vertex_id": 0}
+        )
 
         self.db.edf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                 FROM edge
-                """)
-            ).fetchall(),
+                """)).fetchall(),
             [(0, 0, 0, 0, 2, 0, 1)],
         )
 
@@ -89,12 +98,10 @@ class TestEDFSearch(FreshModelTestCase):
         self.db.edf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                 FROM edge
-                """)
-            ).fetchall(),
+                """)).fetchall(),
             [(0, 1, 0, 0, 2, 0, 1), (1, 3, 2, 1, 2, 2, 3)],
         )
 
@@ -124,12 +131,11 @@ class TestEDFSearch(FreshModelTestCase):
         self.db.edf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                 FROM edge
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
                 (0, 1, 0, 0, 2, 0, 29),
                 (1, 2, 1, 0, 2, 1, 24),
@@ -156,12 +162,11 @@ class TestEDFSearch(FreshModelTestCase):
         self.db.edf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                 FROM edge
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
                 (0, 1, 0, 0, 2, 0, 29),
                 (1, 2, 1, 0, 2, 1, 26),
@@ -184,7 +189,9 @@ class TestEDFSearch(FreshModelTestCase):
     def test_handle_frucht(self):
         """"""
         self.db.create_graph("test", 1)
-        _ = self.db.add_vertices("test", *[{"metadata": {}} for _ in range(12)])
+        _ = self.db.add_vertices(
+            "test", *[{"metadata": {}} for _ in range(12)]
+        )
         _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": 0, "child_vertex_id": 10},
@@ -210,12 +217,11 @@ class TestEDFSearch(FreshModelTestCase):
         self.db.edf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                 FROM edge
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
                 (0, 10, 0, 0, 2, 0, 19),
                 (1, 11, 10, 0, 2, 1, 18),
@@ -262,12 +268,11 @@ class TestEDFSearch(FreshModelTestCase):
         )
         self.db.edf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                 FROM edge
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
                 (0, 1, 0, 0, 2, 0, 29),
                 (1, 2, 1, 0, 2, 1, 28),
@@ -310,14 +315,11 @@ class TestEDFSearch(FreshModelTestCase):
         )
         self.db.edf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text(
-                    """
+            self.db.connection.execute(sqlalchemy.text("""
                     SELECT id, child_vertex_id, parent_vertex_id, tree, color, pushed, popped
                     FROM edge
-                    """
-                )
-            ).fetchall(),
+                    ORDER BY id
+                    """)).fetchall(),
             [
                 (0, 1, 0, 0, 2, 0, 27),
                 (1, 2, 1, 0, 2, 1, 18),
@@ -337,7 +339,7 @@ class TestEDFSearch(FreshModelTestCase):
         )
 
 
-class TestDFFindCycles(FreshModelTestCase):
+class TestFindCycles(FreshModelTestCase):
     """"""
 
     def test_is_in_giraffe(self):
@@ -372,26 +374,30 @@ class TestDFFindCycles(FreshModelTestCase):
 
         # not acyclic, is cyclic
         self.assertEqual(
-            self.db.connection.execute(sqlalchemy.text("SELECT acyclic FROM graph WHERE id = 'test'")).fetchone(), (0,)
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT acyclic FROM graph WHERE id = 'test'")
+            ).fetchone(),
+            (0,),
         )
 
         # has two cycles
         self.assertEqual(
-            self.db.connection.execute(sqlalchemy.text("SELECT COUNT(*) FROM cycle")).fetchone()[0], 2
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT COUNT(*) FROM cycle")
+            ).fetchone()[0],
+            2,
         )
 
         # has the following parent/child relations
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            set(self.db.connection.execute(sqlalchemy.text("""
                 SELECT e.parent_vertex_id, e.child_vertex_id, ce.cycle_id
                 FROM cycle_edge AS ce
                 LEFT JOIN edge AS e
                     ON e.id = ce.edge_id
                 ORDER BY ce.cycle_id
-                """)
-            ).fetchall(),
-            [
+                """)).fetchall()),
+            {
                 (0, 1, 0),
                 (1, 2, 0),
                 (2, 3, 0),
@@ -402,7 +408,7 @@ class TestDFFindCycles(FreshModelTestCase):
                 (7, 8, 1),
                 (8, 9, 1),
                 (9, 5, 1),
-            ],
+            },
         )
 
     def test_handle_directed_frucht(self):
@@ -412,26 +418,30 @@ class TestDFFindCycles(FreshModelTestCase):
 
         # not acyclic, is cyclic
         self.assertEqual(
-            self.db.connection.execute(sqlalchemy.text("SELECT acyclic FROM graph WHERE id = 'test'")).fetchone(), (0,)
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT acyclic FROM graph WHERE id = 'test'")
+            ).fetchone(),
+            (0,),
         )
 
         # has two cycles
         self.assertEqual(
-            self.db.connection.execute(sqlalchemy.text("SELECT COUNT(*) FROM cycle")).fetchone()[0], 4
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT COUNT(*) FROM cycle")
+            ).fetchone()[0],
+            4,
         )
 
         # has the following parent/child relations
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            set(self.db.connection.execute(sqlalchemy.text("""
                 SELECT e.parent_vertex_id, e.child_vertex_id, ce.cycle_id
                 FROM cycle_edge AS ce
                 LEFT JOIN edge AS e
                     ON e.id = ce.edge_id
                 ORDER BY ce.cycle_id
-                """)
-            ).fetchall(),
-            [
+                """)).fetchall()),
+            {
                 (10, 11, 0),
                 (11, 8, 0),
                 (8, 6, 0),
@@ -452,13 +462,15 @@ class TestDFFindCycles(FreshModelTestCase):
                 (0, 1, 3),
                 (2, 3, 3),
                 (1, 2, 3),
-            ],
+            },
         )
 
     def test_handle_cycle_with_tail(self):
         """"""
         self.db.create_graph("test", 1)
-        _ = self.db.add_vertices("test", *[{"metadata": {}} for _ in range(15)])
+        _ = self.db.add_vertices(
+            "test", *[{"metadata": {}} for _ in range(15)]
+        )
         _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": 0, "child_vertex_id": 1},
@@ -481,26 +493,30 @@ class TestDFFindCycles(FreshModelTestCase):
 
         # not acyclic, is cyclic
         self.assertEqual(
-            self.db.connection.execute(sqlalchemy.text("SELECT acyclic FROM graph WHERE id = 'test'")).fetchone(), (0,)
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT acyclic FROM graph WHERE id = 'test'")
+            ).fetchone(),
+            (0,),
         )
 
         # has two cycles
         self.assertEqual(
-            self.db.connection.execute(sqlalchemy.text("SELECT COUNT(*) FROM cycle")).fetchone()[0], 1
+            self.db.connection.execute(
+                sqlalchemy.text("SELECT COUNT(*) FROM cycle")
+            ).fetchone()[0],
+            1,
         )
 
         # has the following parent/child relations
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            set(self.db.connection.execute(sqlalchemy.text("""
                 SELECT e.parent_vertex_id, e.child_vertex_id, ce.cycle_id
                 FROM cycle_edge AS ce
                 LEFT JOIN edge AS e
                     ON e.id = ce.edge_id
-                ORDER BY ce.cycle_id
-                """)
-            ).fetchall(),
-            [
+                ORDER BY e.parent_vertex_id
+                """)).fetchall()),
+            {
                 (0, 1, 0),
                 (1, 2, 0),
                 (2, 8, 0),
@@ -511,7 +527,7 @@ class TestDFFindCycles(FreshModelTestCase):
                 (12, 13, 0),
                 (13, 14, 0),
                 (14, 0, 0),
-            ],
+            },
         )
 
 
@@ -533,7 +549,7 @@ class TestTopologicalSort(FreshModelTestCase):
         s = inspect.signature(giraffe.Database.topological_sort)
 
         # verify parameters are unchanged
-        self.assertEqual(len(s.parameters), 3)
+        self.assertEqual(len(s.parameters), 2)
 
         fles = s.parameters["self"]
         self.assertEqual(fles.default, fles.empty)
@@ -542,10 +558,6 @@ class TestTopologicalSort(FreshModelTestCase):
         graph = s.parameters["graph"]
         self.assertEqual(graph.default, graph.empty)
         self.assertEqual(graph.kind, graph.POSITIONAL_OR_KEYWORD)
-
-        search_hooks = s.parameters["search_hooks"]
-        self.assertEqual(search_hooks.default, search_hooks.empty)
-        self.assertEqual(search_hooks.kind, search_hooks.VAR_KEYWORD)
 
     def test_create_valid_permutation_with_cormen_etal_example(self):
         """"""
@@ -565,19 +577,20 @@ class TestTopologicalSort(FreshModelTestCase):
         )
 
         self.db.topological_sort("test")
-
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id FROM vertex WHERE graph_id = :graph_id ORDER BY topological_id"),
+                sqlalchemy.text(
+                    "SELECT id FROM vertex WHERE graph_id = :graph_id ORDER BY topological_id"
+                ),
                 {"graph_id": "test"},
             ).fetchall(),
-            [(0,), (6,), (3,), (4,), (1,), (2,), (5,), (7,), (8,)],
+            [(8,), (3,), (4,), (0,), (6,), (1,), (7,), (2,), (5,)],
         )
 
-    def test_create_valid_permutation_with_three_in_a_row(self):
+    def test_create_valid_permutation_with_four_in_a_row(self):
         """"""
         self.db.create_graph("test", 1)
-        _ = self.db.add_vertices("test", *[{} for _ in range(3)])
+        _ = self.db.add_vertices("test", *[{} for _ in range(4)])
         _ = self.db.add_edges(
             "test",
             {"parent_vertex_id": 0, "child_vertex_id": 1},
@@ -589,16 +602,20 @@ class TestTopologicalSort(FreshModelTestCase):
 
         self.assertEqual(
             self.db.connection.execute(
-                sqlalchemy.text("SELECT id FROM vertex WHERE graph_id = 'test' ORDER BY topological_id"),
+                sqlalchemy.text(
+                    "SELECT id FROM vertex WHERE graph_id = 'test' ORDER BY topological_id"
+                ),
             ).fetchall(),
-            [(0,), (1,), (2,)],
+            [(0,), (1,), (2,), (3,)],
         )
 
     def test_raise_if_cycles(self):
         """"""
         self.db.create_graph("test", 1)
         _ = self.db.add_vertices("test", *[{} for _ in range(1)])
-        _ = self.db.add_edges("test", {"parent_vertex_id": 0, "child_vertex_id": 0})
+        _ = self.db.add_edges(
+            "test", {"parent_vertex_id": 0, "child_vertex_id": 0}
+        )
         self.db.find_cycles("test")
         with self.assertRaises(Exception):
             self.db.topological_sort("test")
@@ -613,7 +630,9 @@ class TestStronglyConnectedComponents(FreshModelTestCase):
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.strongly_connected_components))
+        self.assertTrue(
+            callable(giraffe.Database.strongly_connected_components)
+        )
 
     def test_signature_unchanged(self):
         """"""
@@ -650,13 +669,11 @@ class TestStronglyConnectedComponents(FreshModelTestCase):
 
         self.db.strongly_connected_components("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, scc_index, scc_lowlink, scc_onstack
                 FROM vertex
                 ORDER BY id
-                """)
-            ).fetchall(),
+                """)).fetchall(),
             [
                 (0, 1, 1, 0),
                 (1, 0, 0, 0),
@@ -693,13 +710,11 @@ class TestStronglyConnectedComponents(FreshModelTestCase):
         self.db.strongly_connected_components("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, scc_index, scc_lowlink, scc_onstack
                 FROM vertex
                 ORDER BY id
-                """)
-            ).fetchall(),
+                """)).fetchall(),
             [
                 (0, 0, 0, 0),
                 (1, 1, 0, 0),
@@ -747,37 +762,47 @@ class TestVDFSearch(FreshModelTestCase):
 
     def test_raise_on_immutable_graph(self):
         """"""
-        self.db.connection.execute(sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)"))
+        self.db.connection.execute(
+            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
+        )
 
         for i in range(1, 5):
             for c in itertools.combinations(
                 [giraffe.VEIM, giraffe.EDIM, giraffe.CYIM, giraffe.CEIM], i
             ):
                 flags = functools.reduce(lambda x, y: x | y, c)
-                self.db.connection.execute(sqlalchemy.text("UPDATE graph SET mode = :flags"), {"flags": flags})
+                self.db.connection.execute(
+                    sqlalchemy.text("UPDATE graph SET mode = :flags"),
+                    {"flags": flags},
+                )
                 with self.assertRaises(Exception):
                     self.db.vdf_search("x")
 
     def test_do_nothing_with_empty_graph(self):
         """"""
-        self.db.connection.execute(sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('test', 0)"))
+        self.db.connection.execute(
+            sqlalchemy.text(
+                "INSERT INTO graph (id, directed) VALUES ('test', 0)"
+            )
+        )
         self.assertIs(self.db.vdf_search("test"), None)
 
     def test_handle_single_self_loop(self):
         """"""
         self.db.create_graph("test", 1, 0)
         self.db.add_vertices("test", {})
-        self.db.add_edges("test", {"parent_vertex_id": 0, "child_vertex_id": 0})
+        self.db.add_edges(
+            "test", {"parent_vertex_id": 0, "child_vertex_id": 0}
+        )
 
         self.db.vdf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [(0, 0, 2, 0, 1)],
         )
 
@@ -794,17 +819,16 @@ class TestVDFSearch(FreshModelTestCase):
         self.db.vdf_search("test")
 
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped, graph_id
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
                 (0, 0, 2, 0, 3, "test"),
                 (1, 0, 2, 1, 2, "test"),
                 (2, 2, 2, 4, 7, "test"),
-                (3, 2, 2, 5, 6, "test")
+                (3, 2, 2, 5, 6, "test"),
             ],
         )
 
@@ -832,23 +856,22 @@ class TestVDFSearch(FreshModelTestCase):
         )
         self.db.vdf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped, graph_id
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
-                (0, 0, 2, 0, 19, 'test'),
-                (1, 0, 2, 1, 18, 'test'),
-                (2, 0, 2, 2, 15, 'test'),
-                (3, 0, 2, 3, 12, 'test'),
-                (4, 0, 2, 4, 9, 'test'),
-                (5, 0, 2, 7, 8, 'test'),
-                (6, 0, 2, 16, 17, 'test'),
-                (7, 0, 2, 13, 14, 'test'),
-                (8, 0, 2, 10, 11, 'test'),
-                (9, 0, 2, 5, 6, 'test')
+                (0, 0, 2, 0, 19, "test"),
+                (1, 0, 2, 1, 18, "test"),
+                (2, 0, 2, 2, 15, "test"),
+                (3, 0, 2, 3, 12, "test"),
+                (4, 0, 2, 4, 9, "test"),
+                (5, 0, 2, 5, 6, "test"),
+                (6, 0, 2, 16, 17, "test"),
+                (7, 0, 2, 13, 14, "test"),
+                (8, 0, 2, 10, 11, "test"),
+                (9, 0, 2, 7, 8, "test"),
             ],
         )
 
@@ -857,23 +880,22 @@ class TestVDFSearch(FreshModelTestCase):
         self.db.create_peterson("test")
         self.db.vdf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped, graph_id
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
-                (0, 0, 2, 0, 19, 'test'),
-                (1, 0, 2, 1, 18, 'test'),
-                (2, 0, 2, 2, 17, 'test'),
-                (3, 0, 2, 3, 16, 'test'),
-                (4, 0, 2, 4, 15, 'test'),
-                (5, 0, 2, 6, 13, 'test'),
-                (6, 0, 2, 7, 12, 'test'),
-                (7, 0, 2, 8, 11, 'test'),
-                (8, 0, 2, 9, 10, 'test'),
-                (9, 0, 2, 5, 14, 'test')
+                (0, 0, 2, 0, 19, "test"),
+                (1, 0, 2, 1, 18, "test"),
+                (2, 0, 2, 2, 17, "test"),
+                (3, 0, 2, 3, 16, "test"),
+                (4, 0, 2, 4, 15, "test"),
+                (5, 0, 2, 6, 13, "test"),
+                (6, 0, 2, 7, 12, "test"),
+                (7, 0, 2, 8, 11, "test"),
+                (8, 0, 2, 9, 10, "test"),
+                (9, 0, 2, 5, 14, "test"),
             ],
         )
 
@@ -904,26 +926,25 @@ class TestVDFSearch(FreshModelTestCase):
         )
         self.db.vdf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped, graph_id
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
-                (0, 0, 2, 0, 21, 'test'),
-                (1, 0, 2, 15, 20, 'test'),
-                (2, 0, 2, 16, 19, 'test'),
-                (3, 0, 2, 17, 18, 'test'),
-                (4, 4, 2, 22, 23, 'test'),
-                (5, 0, 2, 6, 9, 'test'),
-                (6, 0, 2, 4, 11, 'test'),
-                (7, 0, 2, 5, 10, 'test'),
-                (8, 0, 2, 3, 12, 'test'),
-                (9, 0, 2, 7, 8, 'test'),
-                (10, 0, 2, 1, 14, 'test'),
-                (11, 0, 2, 2, 13, 'test')
-            ]
+                (0, 0, 2, 0, 21, "test"),
+                (1, 0, 2, 1, 20, "test"),
+                (2, 0, 2, 2, 5, "test"),
+                (3, 0, 2, 3, 4, "test"),
+                (4, 4, 2, 22, 23, "test"),
+                (5, 0, 2, 6, 19, "test"),
+                (6, 0, 2, 11, 14, "test"),
+                (7, 0, 2, 12, 13, "test"),
+                (8, 0, 2, 10, 15, "test"),
+                (9, 0, 2, 7, 18, "test"),
+                (10, 0, 2, 8, 17, "test"),
+                (11, 0, 2, 9, 16, "test"),
+            ],
         )
 
     def test_handle_weird_loop(self):
@@ -950,29 +971,28 @@ class TestVDFSearch(FreshModelTestCase):
         )
         self.db.vdf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped, graph_id
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
-                (0, 0, 2, 0, 29, 'test'),
-                (1, 0, 2, 1, 28, 'test'),
-                (2, 0, 2, 2, 27, 'test'),
-                (3, 0, 2, 3, 12, 'test'),
-                (4, 0, 2, 4, 11, 'test'),
-                (5, 0, 2, 5, 10, 'test'),
-                (6, 0, 2, 6, 9, 'test'),
-                (7, 0, 2, 7, 8, 'test'),
-                (8, 0, 2, 13, 26, 'test'),
-                (9, 0, 2, 14, 25, 'test'),
-                (10, 0, 2, 15, 24, 'test'),
-                (11, 0, 2, 16, 23, 'test'),
-                (12, 0, 2, 17, 22, 'test'),
-                (13, 0, 2, 18, 21, 'test'),
-                (14, 0, 2, 19, 20, 'test')
-            ]
+                (0, 0, 2, 0, 29, "test"),
+                (1, 0, 2, 1, 28, "test"),
+                (2, 0, 2, 2, 27, "test"),
+                (3, 0, 2, 3, 12, "test"),
+                (4, 0, 2, 4, 11, "test"),
+                (5, 0, 2, 5, 10, "test"),
+                (6, 0, 2, 6, 9, "test"),
+                (7, 0, 2, 7, 8, "test"),
+                (8, 0, 2, 13, 26, "test"),
+                (9, 0, 2, 14, 25, "test"),
+                (10, 0, 2, 15, 24, "test"),
+                (11, 0, 2, 16, 23, "test"),
+                (12, 0, 2, 17, 22, "test"),
+                (13, 0, 2, 18, 21, "test"),
+                (14, 0, 2, 19, 20, "test"),
+            ],
         )
 
     def test_handle_cormen_etal(self):
@@ -998,20 +1018,19 @@ class TestVDFSearch(FreshModelTestCase):
         )
         self.db.vdf_search("test")
         self.assertEqual(
-            self.db.connection.execute(
-                sqlalchemy.text("""
+            self.db.connection.execute(sqlalchemy.text("""
                 SELECT id, tree, color, pushed, popped, graph_id
                 FROM vertex
-                """)
-            ).fetchall(),
+                ORDER BY id
+                """)).fetchall(),
             [
-                (0, 0, 2, 0, 15, 'test'),
-                (1, 0, 2, 1, 14, 'test'),
-                (2, 0, 2, 2, 11, 'test'),
-                (3, 0, 2, 3, 6, 'test'),
-                (4, 0, 2, 12, 13, 'test'),
-                (5, 0, 2, 8, 9, 'test'),
-                (6, 0, 2, 7, 10, 'test'),
-                (7, 0, 2, 4, 5, 'test')
-            ]
+                (0, 0, 2, 0, 15, "test"),
+                (1, 0, 2, 1, 14, "test"),
+                (2, 0, 2, 2, 11, "test"),
+                (3, 0, 2, 3, 6, "test"),
+                (4, 0, 2, 12, 13, "test"),
+                (5, 0, 2, 8, 9, "test"),
+                (6, 0, 2, 7, 10, "test"),
+                (7, 0, 2, 4, 5, "test"),
+            ],
         )
