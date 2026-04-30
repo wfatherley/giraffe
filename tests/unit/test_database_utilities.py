@@ -15,17 +15,17 @@ class TestLoadSchema(unittest.TestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("load_schema", dir(giraffe.Database))
+        self.assertIn("load_schema", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.load_schema))
+        self.assertTrue(callable(giraffe.Giraffe.load_schema))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.load_schema)
+        s = inspect.signature(giraffe.Giraffe.load_schema)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 1)
@@ -37,7 +37,7 @@ class TestLoadSchema(unittest.TestCase):
     def test_creates_tables(self):
         """"""
         engine = sqlalchemy.create_engine("sqlite:///:memory:")
-        db = giraffe.Database(engine)
+        db = giraffe.Giraffe(engine)
         db.load_schema()
         inspector = sqlalchemy.inspect(engine)
         self.assertIn("graph", inspector.get_table_names())
@@ -54,17 +54,17 @@ class TestClose(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("close", dir(giraffe.Database))
+        self.assertIn("close", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.close))
+        self.assertTrue(callable(giraffe.Giraffe.close))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.close)
+        s = inspect.signature(giraffe.Giraffe.close)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 1)
@@ -87,17 +87,17 @@ class TestCheckMode(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("check_mode", dir(giraffe.Database))
+        self.assertIn("check_mode", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.check_mode))
+        self.assertTrue(callable(giraffe.Giraffe.check_mode))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.check_mode)
+        s = inspect.signature(giraffe.Giraffe.check_mode)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -153,17 +153,17 @@ class TestCreateGraph(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("create_graph", dir(giraffe.Database))
+        self.assertIn("create_graph", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.create_graph))
+        self.assertTrue(callable(giraffe.Giraffe.create_graph))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.create_graph)
+        s = inspect.signature(giraffe.Giraffe.create_graph)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 6)
@@ -239,17 +239,17 @@ class TestAlterGraph(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("alter_graph", dir(giraffe.Database))
+        self.assertIn("alter_graph", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.alter_graph))
+        self.assertTrue(callable(giraffe.Giraffe.alter_graph))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.alter_graph)
+        s = inspect.signature(giraffe.Giraffe.alter_graph)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -328,17 +328,17 @@ class TestDeleteGraphs(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("delete_graphs", dir(giraffe.Database))
+        self.assertIn("delete_graphs", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.delete_graphs))
+        self.assertTrue(callable(giraffe.Giraffe.delete_graphs))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.delete_graphs)
+        s = inspect.signature(giraffe.Giraffe.delete_graphs)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 2)
@@ -374,17 +374,17 @@ class TestAddVertices(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("add_vertices", dir(giraffe.Database))
+        self.assertIn("add_vertices", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.add_vertices))
+        self.assertTrue(callable(giraffe.Giraffe.add_vertices))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.add_vertices)
+        s = inspect.signature(giraffe.Giraffe.add_vertices)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -479,17 +479,17 @@ class TestAlterVertex(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("alter_vertex", dir(giraffe.Database))
+        self.assertIn("alter_vertex", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.alter_vertex))
+        self.assertTrue(callable(giraffe.Giraffe.alter_vertex))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.alter_vertex)
+        s = inspect.signature(giraffe.Giraffe.alter_vertex)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -558,17 +558,17 @@ class TestDeleteVertices(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("delete_vertices", dir(giraffe.Database))
+        self.assertIn("delete_vertices", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.delete_vertices))
+        self.assertTrue(callable(giraffe.Giraffe.delete_vertices))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.delete_vertices)
+        s = inspect.signature(giraffe.Giraffe.delete_vertices)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 2)
@@ -599,17 +599,17 @@ class TestAddEdges(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("add_edges", dir(giraffe.Database))
+        self.assertIn("add_edges", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.add_edges))
+        self.assertTrue(callable(giraffe.Giraffe.add_edges))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.add_edges)
+        s = inspect.signature(giraffe.Giraffe.add_edges)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -711,17 +711,17 @@ class TestAlterEdge(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("alter_edge", dir(giraffe.Database))
+        self.assertIn("alter_edge", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.alter_edge))
+        self.assertTrue(callable(giraffe.Giraffe.alter_edge))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.alter_edge)
+        s = inspect.signature(giraffe.Giraffe.alter_edge)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -792,17 +792,17 @@ class TestDeleteEdges(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("delete_edges", dir(giraffe.Database))
+        self.assertIn("delete_edges", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.delete_edges))
+        self.assertTrue(callable(giraffe.Giraffe.delete_edges))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.delete_edges)
+        s = inspect.signature(giraffe.Giraffe.delete_edges)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 2)

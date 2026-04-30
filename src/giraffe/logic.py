@@ -100,7 +100,7 @@ class Color(IntEnum):
     BLACK = 2
 
 
-class Database:
+class _Giraffe:
     """Composition of one DBAPI connection and graph methods.
 
     Primary interface for users of Giraffe. Given a live PEP-249

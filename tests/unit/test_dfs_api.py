@@ -13,17 +13,17 @@ class TestEDFSearch(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("edf_search", dir(giraffe.Database))
+        self.assertIn("edf_search", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.edf_search))
+        self.assertTrue(callable(giraffe.Giraffe.edf_search))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.edf_search)
+        s = inspect.signature(giraffe.Giraffe.edf_search)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -338,17 +338,17 @@ class TestFindCycles(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("find_cycles", dir(giraffe.Database))
+        self.assertIn("find_cycles", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.find_cycles))
+        self.assertTrue(callable(giraffe.Giraffe.find_cycles))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.find_cycles)
+        s = inspect.signature(giraffe.Giraffe.find_cycles)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 2)
@@ -530,17 +530,17 @@ class TestTopologicalSort(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("topological_sort", dir(giraffe.Database))
+        self.assertIn("topological_sort", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.topological_sort))
+        self.assertTrue(callable(giraffe.Giraffe.topological_sort))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.topological_sort)
+        s = inspect.signature(giraffe.Giraffe.topological_sort)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 2)
@@ -620,19 +620,19 @@ class TestStronglyConnectedComponents(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("strongly_connected_components", dir(giraffe.Database))
+        self.assertIn("strongly_connected_components", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
         self.assertTrue(
-            callable(giraffe.Database.strongly_connected_components)
+            callable(giraffe.Giraffe.strongly_connected_components)
         )
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.strongly_connected_components)
+        s = inspect.signature(giraffe.Giraffe.strongly_connected_components)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 2)
@@ -727,17 +727,17 @@ class TestVDFSearch(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("vdf_search", dir(giraffe.Database))
+        self.assertIn("vdf_search", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.vdf_search))
+        self.assertTrue(callable(giraffe.Giraffe.vdf_search))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.vdf_search)
+        s = inspect.signature(giraffe.Giraffe.vdf_search)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)

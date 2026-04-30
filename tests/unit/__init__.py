@@ -26,7 +26,7 @@ class FreshModelTestCase(unittest.TestCase):
 
         # build database
         self.engine = sqlalchemy.create_engine(url, pool_pre_ping=True)
-        self.db = giraffe.Database(self.engine)
+        self.db = giraffe.Giraffe(self.engine)
 
         # migrate and clean
         self.db.load_schema()

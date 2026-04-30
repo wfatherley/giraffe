@@ -11,17 +11,17 @@ class TestTranspose(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("transpose", dir(giraffe.Database))
+        self.assertIn("transpose", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.transpose))
+        self.assertTrue(callable(giraffe.Giraffe.transpose))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.transpose)
+        s = inspect.signature(giraffe.Giraffe.transpose)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 4)

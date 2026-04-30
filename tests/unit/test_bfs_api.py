@@ -14,17 +14,17 @@ class TestEBFSearch(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("ebf_search", dir(giraffe.Database))
+        self.assertIn("ebf_search", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.ebf_search))
+        self.assertTrue(callable(giraffe.Giraffe.ebf_search))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.ebf_search)
+        s = inspect.signature(giraffe.Giraffe.ebf_search)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -205,17 +205,17 @@ class TestVBFSearch(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("vbf_search", dir(giraffe.Database))
+        self.assertIn("vbf_search", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.vbf_search))
+        self.assertTrue(callable(giraffe.Giraffe.vbf_search))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.vbf_search)
+        s = inspect.signature(giraffe.Giraffe.vbf_search)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -395,17 +395,17 @@ class TestMinimumSpanningTree(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("minimum_spanning_tree", dir(giraffe.Database))
+        self.assertIn("minimum_spanning_tree", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.minimum_spanning_tree))
+        self.assertTrue(callable(giraffe.Giraffe.minimum_spanning_tree))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.minimum_spanning_tree)
+        s = inspect.signature(giraffe.Giraffe.minimum_spanning_tree)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -555,17 +555,17 @@ class TestSingleSourceShortestPath(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("single_source_shortest_path", dir(giraffe.Database))
+        self.assertIn("single_source_shortest_path", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.single_source_shortest_path))
+        self.assertTrue(callable(giraffe.Giraffe.single_source_shortest_path))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.single_source_shortest_path)
+        s = inspect.signature(giraffe.Giraffe.single_source_shortest_path)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 3)
@@ -658,17 +658,17 @@ class TestMaximumFlow(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("maximum_flow", dir(giraffe.Database))
+        self.assertIn("maximum_flow", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.maximum_flow))
+        self.assertTrue(callable(giraffe.Giraffe.maximum_flow))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.maximum_flow)
+        s = inspect.signature(giraffe.Giraffe.maximum_flow)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 4)
@@ -837,17 +837,17 @@ class TestFlowNetworkWalkVBF(FreshModelTestCase):
 
     def test_is_in_giraffe(self):
         """"""
-        self.assertIn("flow_network_walk_vbf", dir(giraffe.Database))
+        self.assertIn("flow_network_walk_vbf", dir(giraffe.Giraffe))
 
     def test_is_callable(self):
         """"""
-        self.assertTrue(callable(giraffe.Database.flow_network_walk_vbf))
+        self.assertTrue(callable(giraffe.Giraffe.flow_network_walk_vbf))
 
     def test_signature_unchanged(self):
         """"""
 
         # fetch signature
-        s = inspect.signature(giraffe.Database.flow_network_walk_vbf)
+        s = inspect.signature(giraffe.Giraffe.flow_network_walk_vbf)
 
         # verify parameters are unchanged
         self.assertEqual(len(s.parameters), 4)
