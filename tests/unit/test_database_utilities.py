@@ -123,9 +123,7 @@ class TestCheckMode(FreshModelTestCase):
 
     def test_no_graph_mode_always_returns_false(self):
         """"""
-        self.db.connection.execute(
-            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
-        )
+        self.db.create_graph("x", 0)
         self.assertFalse(self.db.check_mode("x"))
         for i in range(1, 5):
             for combo in itertools.combinations(

@@ -51,7 +51,7 @@ class TestTranspose(FreshModelTestCase):
     def test_handle_two_vertex_graph(self):
         """"""
         self.db.create_graph("test", 1)
-        _ = self.db.add_vertices("test", *[{} for _ in range(2)])
+        _ = self.db.add_vertices("test", {}, {})
         self.db.add_edges(
             "test", {"parent_vertex_id": _[0], "child_vertex_id": _[1]}
         )

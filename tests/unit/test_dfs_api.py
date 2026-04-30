@@ -42,9 +42,7 @@ class TestEDFSearch(FreshModelTestCase):
 
     def test_raise_on_immutable_graph(self):
         """"""
-        self.db.connection.execute(
-            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
-        )
+        self.db.create_graph("x", 0)
 
         for i in range(1, 5):
             for c in itertools.combinations(
@@ -60,11 +58,7 @@ class TestEDFSearch(FreshModelTestCase):
 
     def test_do_nothing_with_empty_graph(self):
         """"""
-        self.db.connection.execute(
-            sqlalchemy.text(
-                "INSERT INTO graph (id, directed) VALUES ('test', 0)"
-            )
-        )
+        self.db.create_graph("test", 0)
         self.assertIs(self.db.edf_search("test"), None)
 
     def test_handle_single_self_loop(self):
@@ -428,7 +422,7 @@ class TestFindCycles(FreshModelTestCase):
         self.assertEqual(
             self.db.connection.execute(
                 sqlalchemy.text("SELECT COUNT(*) FROM cycle")
-            ).fetchone()[0],
+            ).scalar_one(),
             4,
         )
 
@@ -762,9 +756,7 @@ class TestVDFSearch(FreshModelTestCase):
 
     def test_raise_on_immutable_graph(self):
         """"""
-        self.db.connection.execute(
-            sqlalchemy.text("INSERT INTO graph (id, directed) VALUES ('x', 0)")
-        )
+        self.db.create_graph("x", 0)
 
         for i in range(1, 5):
             for c in itertools.combinations(
@@ -780,11 +772,7 @@ class TestVDFSearch(FreshModelTestCase):
 
     def test_do_nothing_with_empty_graph(self):
         """"""
-        self.db.connection.execute(
-            sqlalchemy.text(
-                "INSERT INTO graph (id, directed) VALUES ('test', 0)"
-            )
-        )
+        self.db.create_graph("test", 0)
         self.assertIs(self.db.vdf_search("test"), None)
 
     def test_handle_single_self_loop(self):
