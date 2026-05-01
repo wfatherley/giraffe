@@ -639,11 +639,10 @@ class _Giraffe:
 
         # initialization
         current_time = 0
-        self.connection.execute(self.sql["vdf_search"][0], {"graph_id": graph})
-        # TODO: update above and select below can be mergred?
+
         # vertex ids can be used as a tree ids
         tree_result = self.connection.execute(
-            self.sql["vdf_search"][1], {"graph_id": graph}
+            self.sql["vdf_search"][0], {"graph_id": graph}
         ).scalars()
         while (tree := next(tree_result, None)) is not None:
 
@@ -652,7 +651,7 @@ class _Giraffe:
                 None, None, self.connection
             )
             vertex = self.connection.execute(
-                self.sql["vdf_search"][2],
+                self.sql["vdf_search"][1],
                 {
                     "pushed": current_time,
                     "tree": tree,
@@ -667,13 +666,13 @@ class _Giraffe:
             # TODO: merge update-returing above and select below in cte
             # fetch vertices growing off current vertex
             branch_tips = self.connection.execute(
-                self.sql["vdf_search"][3],
+                self.sql["vdf_search"][2],
                 {"parent_vertex_id": vertex[0], "graph_id": graph},
             ).fetchall()
 
             # compute stack height to use below as break condition
             tree_size = self.connection.execute(
-                self.sql["vdf_search"][4],
+                self.sql["vdf_search"][3],
                 {"graph_id": graph, "tree": tree},
             ).fetchone()[0]
             # TODO: manage tree size w/o db?
@@ -710,7 +709,7 @@ class _Giraffe:
                         vertex, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["vdf_search"][5],
+                        self.sql["vdf_search"][4],
                         {
                             "pushed": current_time,
                             "tree": tree,
@@ -720,7 +719,7 @@ class _Giraffe:
 
                     # fetch vertices growing off current vertex
                     branch_tips = self.connection.execute(
-                        self.sql["vdf_search"][3],
+                        self.sql["vdf_search"][2],
                         {"parent_vertex_id": vertex[0], "graph_id": graph},
                     ).fetchall()
                     hooks.get("after_push", lambda x, y, z: None)(
@@ -740,7 +739,7 @@ class _Giraffe:
                         vertex, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["vdf_search"][6],
+                        self.sql["vdf_search"][5],
                         {"popped": current_time, "id": vertex[0]},
                     )
                     current_time += 1
@@ -752,13 +751,13 @@ class _Giraffe:
 
                     # set vertex to new stack top
                     vertex = self.connection.execute(
-                        self.sql["vdf_search"][7],
+                        self.sql["vdf_search"][6],
                         {"graph_id": graph, "tree": tree},
                     ).fetchone()
 
                     # ask stack top for its branch tips
                     branch_tips = self.connection.execute(
-                        self.sql["vdf_search"][3],
+                        self.sql["vdf_search"][2],
                         {"parent_vertex_id": vertex[0], "graph_id": graph},
                     ).fetchall()
                     hooks.get("after_pop", lambda x, y, z: None)(
@@ -788,11 +787,10 @@ class _Giraffe:
 
         # initialization
         current_time = 0
-        self.connection.execute(self.sql["edf_search"][0], {"graph_id": graph})
 
         # edge ids can be used as a tree ids
         tree_result = self.connection.execute(
-            self.sql["edf_search"][1], {"graph_id": graph}
+            self.sql["edf_search"][0], {"graph_id": graph}
         ).scalars()
         while (tree := next(tree_result, None)) is not None:
 
@@ -801,7 +799,7 @@ class _Giraffe:
                 None, None, self.connection
             )
             edge = self.connection.execute(
-                self.sql["edf_search"][2],
+                self.sql["edf_search"][1],
                 {
                     "pushed": current_time,
                     "tree": tree,
@@ -816,13 +814,13 @@ class _Giraffe:
 
             # fetch edges growing off current edge
             branch_tips = self.connection.execute(
-                self.sql["edf_search"][3],
+                self.sql["edf_search"][2],
                 {"graph_id": graph, "parent_vertex_id": edge[1]},
             ).fetchall()
 
             # compute stack height to use below as break condition
             tree_size = self.connection.execute(
-                self.sql["edf_search"][4],
+                self.sql["edf_search"][3],
                 {"graph_id": graph, "tree": tree},
             ).fetchone()[0]
 
@@ -858,7 +856,7 @@ class _Giraffe:
                         edge, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["edf_search"][5],
+                        self.sql["edf_search"][4],
                         {
                             "pushed": current_time,
                             "tree": tree,
@@ -868,7 +866,7 @@ class _Giraffe:
 
                     # fetch edges growing off current edge
                     branch_tips = self.connection.execute(
-                        self.sql["edf_search"][3],
+                        self.sql["edf_search"][2],
                         {"graph_id": graph, "parent_vertex_id": edge[1]},
                     ).fetchall()
                     hooks.get("after_push", lambda x, y, z: None)(
@@ -888,7 +886,7 @@ class _Giraffe:
                         edge, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["edf_search"][6],
+                        self.sql["edf_search"][5],
                         {"popped": current_time, "id": edge[0]},
                     )
                     current_time += 1
@@ -900,7 +898,7 @@ class _Giraffe:
 
                     # set edge to new stack top
                     edge = self.connection.execute(
-                        self.sql["edf_search"][7],
+                        self.sql["edf_search"][6],
                         {
                             "graph_id": graph,
                             "tree": tree,
@@ -910,7 +908,7 @@ class _Giraffe:
 
                     # ask stack top for its branch tips
                     branch_tips = self.connection.execute(
-                        self.sql["edf_search"][3],
+                        self.sql["edf_search"][2],
                         {"graph_id": graph, "parent_vertex_id": edge[1]},
                     ).fetchall()
                     hooks.get("after_pop", lambda x, y, z: None)(

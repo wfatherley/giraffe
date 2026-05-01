@@ -1818,14 +1818,14 @@ dql_map_raw |= {
         UPDATE vertex
         SET color = 0, pushed = NULL, popped = NULL
         WHERE graph_id = :graph_id
+        RETURNING id
         """,  # 0
-        "SELECT id FROM vertex WHERE graph_id = :graph_id",  # 1
         """
         UPDATE vertex
         SET color = 1, pushed = :pushed, tree = :tree
         WHERE graph_id = :graph_id AND id = :id AND color = 0
         RETURNING id, tree, color, pushed, graph_id
-        """,  # 2
+        """,  # 1
         """
         SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
         FROM vertex AS v
@@ -1836,22 +1836,22 @@ dql_map_raw |= {
             AND e.parent_vertex_id = :parent_vertex_id
             AND v.graph_id = :graph_id
         ORDER BY v.id
-        """,  # 3
+        """,  # 2
         """
         SELECT COUNT(*)
         FROM vertex
         WHERE graph_id = :graph_id AND tree = :tree AND color = 1
-        """,  # 4
+        """,  # 3
         """
         UPDATE vertex
         SET color = 1, pushed = :pushed, tree = :tree
         WHERE id = :id
-        """,  # 5
+        """,  # 4
         """
         UPDATE vertex
         SET color = 2, popped = :popped
         WHERE id = :id
-        """,  # 6
+        """,  # 5
         """
         SELECT id, tree, color, pushed, graph_id
         FROM vertex
@@ -1860,7 +1860,7 @@ dql_map_raw |= {
             FROM vertex
             WHERE tree = :tree AND color = 1 AND graph_id = :graph_id
         )
-        """,  # 7
+        """,  # 6
     ]
 }
 
@@ -1870,8 +1870,8 @@ dql_map_raw |= {
         UPDATE edge
         SET tree = NULL, color = 0, pushed = NULL, popped = NULL
         WHERE graph_id = :graph_id
+        RETURNING id
         """,  # 0
-        "SELECT id FROM edge WHERE graph_id = :graph_id",  # 1
         """
         UPDATE
             edge
@@ -1887,7 +1887,7 @@ dql_map_raw |= {
             color,
             pushed,
             graph_id
-        """,  # 2
+        """,  # 1
         """
         SELECT
             id,
@@ -1902,22 +1902,22 @@ dql_map_raw |= {
         WHERE
             graph_id = :graph_id
             AND parent_vertex_id = :parent_vertex_id
-        """,  # 3
+        """,  # 2
         """
         SELECT COUNT(*)
         FROM edge
         WHERE graph_id = :graph_id AND tree = :tree AND color = 1
-        """,  # 4
+        """,  # 3
         """
         UPDATE edge
         SET color = 1, pushed = :pushed, tree = :tree
         WHERE id = :id
-        """,  # 5
+        """,  # 4
         """
         UPDATE edge
         SET color = 2, popped = :popped
         WHERE id = :id
-        """,  # 6
+        """,  # 5
         """
         SELECT
             id,
@@ -1943,7 +1943,7 @@ dql_map_raw |= {
                     AND child_vertex_id = :child_vertex_id
                 LIMIT 1
             )
-        """,  # 7
+        """,  # 6
     ]
 }
 
