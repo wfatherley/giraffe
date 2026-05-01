@@ -1838,20 +1838,15 @@ dql_map_raw |= {
         ORDER BY v.id
         """,  # 2
         """
-        SELECT COUNT(*)
-        FROM vertex
-        WHERE graph_id = :graph_id AND tree = :tree AND color = 1
-        """,  # 3
-        """
         UPDATE vertex
         SET color = 1, pushed = :pushed, tree = :tree
         WHERE id = :id
-        """,  # 4
+        """,  # 3
         """
         UPDATE vertex
         SET color = 2, popped = :popped
         WHERE id = :id
-        """,  # 5
+        """,  # 4
         """
         SELECT id, tree, color, pushed, graph_id
         FROM vertex
@@ -1860,7 +1855,7 @@ dql_map_raw |= {
             FROM vertex
             WHERE tree = :tree AND color = 1 AND graph_id = :graph_id
         )
-        """,  # 6
+        """,  # 5
     ]
 }
 
@@ -1904,20 +1899,15 @@ dql_map_raw |= {
             AND parent_vertex_id = :parent_vertex_id
         """,  # 2
         """
-        SELECT COUNT(*)
-        FROM edge
-        WHERE graph_id = :graph_id AND tree = :tree AND color = 1
-        """,  # 3
-        """
         UPDATE edge
         SET color = 1, pushed = :pushed, tree = :tree
         WHERE id = :id
-        """,  # 4
+        """,  # 3
         """
         UPDATE edge
         SET color = 2, popped = :popped
         WHERE id = :id
-        """,  # 5
+        """,  # 4
         """
         SELECT
             id,
@@ -1943,7 +1933,7 @@ dql_map_raw |= {
                     AND child_vertex_id = :child_vertex_id
                 LIMIT 1
             )
-        """,  # 6
+        """,  # 5
     ]
 }
 

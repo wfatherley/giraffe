@@ -664,6 +664,7 @@ class _Giraffe:
             if vertex is None:
                 continue
             # TODO: merge update-returing above and select below in cte
+            # NOTE: how to know if result set indeed has vertex?
             # fetch vertices growing off current vertex
             branch_tips = self.connection.execute(
                 self.sql["vdf_search"][2],
@@ -671,11 +672,7 @@ class _Giraffe:
             ).fetchall()
 
             # compute stack height to use below as break condition
-            tree_size = self.connection.execute(
-                self.sql["vdf_search"][3],
-                {"graph_id": graph, "tree": tree},
-            ).fetchone()[0]
-            # TODO: manage tree size w/o db?
+            tree_size = 1
 
             # new tree created, trigger hook
             hooks.get("new_tree", lambda w, x, y, z: None)(
@@ -709,7 +706,7 @@ class _Giraffe:
                         vertex, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["vdf_search"][4],
+                        self.sql["vdf_search"][3],
                         {
                             "pushed": current_time,
                             "tree": tree,
@@ -739,7 +736,7 @@ class _Giraffe:
                         vertex, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["vdf_search"][5],
+                        self.sql["vdf_search"][4],
                         {"popped": current_time, "id": vertex[0]},
                     )
                     current_time += 1
@@ -751,7 +748,7 @@ class _Giraffe:
 
                     # set vertex to new stack top
                     vertex = self.connection.execute(
-                        self.sql["vdf_search"][6],
+                        self.sql["vdf_search"][5],
                         {"graph_id": graph, "tree": tree},
                     ).fetchone()
 
@@ -819,10 +816,7 @@ class _Giraffe:
             ).fetchall()
 
             # compute stack height to use below as break condition
-            tree_size = self.connection.execute(
-                self.sql["edf_search"][3],
-                {"graph_id": graph, "tree": tree},
-            ).fetchone()[0]
+            tree_size = 1
 
             # new tree created, trigger hook
             hooks.get("new_tree", lambda w, x, y, z: None)(
@@ -856,7 +850,7 @@ class _Giraffe:
                         edge, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["edf_search"][4],
+                        self.sql["edf_search"][3],
                         {
                             "pushed": current_time,
                             "tree": tree,
@@ -886,7 +880,7 @@ class _Giraffe:
                         edge, branch_tips, self.connection
                     )
                     self.connection.execute(
-                        self.sql["edf_search"][5],
+                        self.sql["edf_search"][4],
                         {"popped": current_time, "id": edge[0]},
                     )
                     current_time += 1
@@ -898,7 +892,7 @@ class _Giraffe:
 
                     # set edge to new stack top
                     edge = self.connection.execute(
-                        self.sql["edf_search"][6],
+                        self.sql["edf_search"][5],
                         {
                             "graph_id": graph,
                             "tree": tree,
