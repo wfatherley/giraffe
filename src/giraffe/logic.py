@@ -14,7 +14,6 @@ looks like this:
 import json
 import math
 
-from collections import OrderedDict
 from enum import IntEnum
 from itertools import groupby
 
@@ -73,7 +72,7 @@ class _Giraffe:
     metadata: sqlalchemy.MetaData = None
 
     def __init__(
-        self, engine: object, infinity: int = 2**32 - 1, **execution_options
+        self, engine: object, infinity: int = math.inf, **execution_options
     ) -> None:
         """
         :param connection: a PEP-249 compliant database connection
