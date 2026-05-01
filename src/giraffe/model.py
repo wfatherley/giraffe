@@ -1,10 +1,9 @@
 """"""
 
-from operator import and_
-
 from sqlalchemy import MetaData, Table, Column
 from sqlalchemy import Integer, String, ForeignKey, Numeric
 from sqlalchemy import (
+    and_,
     case,
     delete,
     insert,
