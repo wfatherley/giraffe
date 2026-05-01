@@ -1859,6 +1859,89 @@ dql_map_raw |= {
     ]
 }
 
+# dql_map_raw |= {
+#     "vdf_search": [
+#         """
+#         UPDATE vertex
+#         SET color = 0, pushed = NULL, popped = NULL
+#         WHERE graph_id = :graph_id
+#         RETURNING id
+#         """,  # 0
+#         """
+#         WITH
+#             this_vertex AS (
+#                 UPDATE vertex
+#                 SET color = 1, pushed = :pushed, tree = :tree
+#                 WHERE graph_id = :graph_id AND id = :id AND color = 0
+#                 RETURNING id, tree, color, pushed, graph_id
+#             ),
+#             branch_tips AS (
+#                 SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+#                 FROM vertex AS v
+#                 INNER JOIN edge AS e
+#                     ON e.child_vertex_id = v.id
+#                 WHERE
+#                     v.color = 0
+#                     AND e.parent_vertex_id = (SELECT id FROM this_vertex)
+#                     AND v.graph_id = :graph_id
+#                 ORDER BY v.id
+#             )
+#         SELECT *, 0 FROM branch_tips
+#         UNION
+#         SELECT *, 1 FROM this_vertex
+#         """,  # 1
+#         """
+#         WITH
+#             do_update AS (
+#                 UPDATE vertex
+#                 SET color = 1, pushed = :pushed, tree = :tree
+#                 WHERE id = :id
+#                 RETURNING id
+#             )
+#         SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+#         FROM vertex AS v
+#         INNER JOIN edge AS e
+#             ON e.child_vertex_id = v.id
+#         WHERE
+#             v.color = 0
+#             AND e.parent_vertex_id = :id
+#             AND v.graph_id = :graph_id
+#         ORDER BY v.id
+#         """,  # 2
+#         """
+#         UPDATE vertex
+#         SET color = 2, popped = :popped
+#         WHERE id = :id
+#         """,  # 3
+#         """
+#         WITH
+#             this_vertex AS (
+#                 SELECT id, tree, color, pushed, graph_id
+#                 FROM vertex
+#                 WHERE graph_id = :graph_id AND pushed = (
+#                     SELECT MAX(pushed)
+#                     FROM vertex
+#                     WHERE tree = :tree AND color = 1 AND graph_id = :graph_id
+#                 )
+#             ),
+#             branch_tips AS (
+#                 SELECT v.id, v.tree, v.color, v.pushed, v.graph_id
+#                 FROM vertex AS v
+#                 INNER JOIN edge AS e
+#                     ON e.child_vertex_id = v.id
+#                 WHERE
+#                     v.color = 0
+#                     AND e.parent_vertex_id = (SELECT id FROM this_vertex)
+#                     AND v.graph_id = :graph_id
+#                 ORDER BY v.id
+#             )
+#         SELECT *, 0 FROM branch_tips
+#         UNION
+#         SELECT *, 1 FROM branch_tips
+#         """,  # 4
+#     ]
+# }
+
 dql_map_raw |= {
     "edf_search": [
         """

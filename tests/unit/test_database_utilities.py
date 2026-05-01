@@ -10,6 +10,28 @@ import sqlalchemy
 from . import FreshModelTestCase
 
 
+class TestRecordDictFactor(FreshModelTestCase):
+    """"""
+
+    def test_is_in_giraffe(self):
+        """"""
+        self.assertIn("record_dict_factory", dir(giraffe.Giraffe))
+
+    def test_is_callable(self):
+        """"""
+        self.assertTrue(callable(giraffe.Giraffe.record_dict_factory))
+
+    def test_signature_unchanged(self):
+        """"""
+        s = inspect.signature(giraffe.Giraffe.record_dict_factory)
+        self.assertEqual(len(s.parameters), 2)
+
+    def test_returns_dict(self):
+        """"""
+        self.assertIsInstance(self.db.record_dict_factory("vertex"), dict)
+
+
+
 class TestLoadSchema(unittest.TestCase):
     """"""
 

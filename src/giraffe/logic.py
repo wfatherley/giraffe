@@ -20,71 +20,6 @@ from itertools import groupby
 
 import sqlalchemy
 
-from .model import dql_map_raw
-
-
-def vertex_odict_factory() -> OrderedDict:
-    """Return ordered mapping of vertex columns and their defaults.
-
-    Return an instance of ``collections.OrderedDict``, with keys
-    corresponding to the attributes (columns) of the vertex object
-    (table). The values are the defaults specified in the vertex DDL.
-
-    :return collections.OrderedDict:
-    """
-    return OrderedDict(
-        **{
-            "id": None,
-            "predecessor": None,
-            "graph_id": None,
-            "aux_id": None,
-            "bf_distance": None,
-            "pushed": None,
-            "popped": None,
-            "tree": None,
-            "color": 0,
-            "metadata": None,
-            "sp_estimate": None,
-            "topological_id": None,
-            "scc_index": None,
-            "scc_lowlink": None,
-            "scc_onstack": None,
-            "mst_key": None,
-        }
-    )
-
-
-def edge_odict_factory() -> OrderedDict:
-    """Return ordered mapping of edge columns and their defaults.
-
-    Return an instance of ``collections.OrderedDict``, with keys
-    corresponding to the attributes (columns) of the edge object
-    (table). The values are the defaults specified in the edge DDL.
-
-    :return collections.OrderedDict:"""
-    return OrderedDict(
-        **{
-            "id": None,
-            "transpose_id": None,
-            "predecessor": None,
-            "parent_vertex_id": None,
-            "child_vertex_id": None,
-            "graph_id": None,
-            "type": None,
-            "tree": None,
-            "color": 0,
-            "pushed": None,
-            "popped": None,
-            "component_graph_bridge": None,
-            "metadata": None,
-            "weight": None,
-            "aux_id": None,
-            "mf_capacity": None,
-            "mf_flow": 0,
-        }
-    )
-
-
 # "is immutable" flags
 VEIM = 2  # vertices
 EDIM = 4  # edges
@@ -165,6 +100,18 @@ class _Giraffe:
 
         :return None:"""
         self.metadata.create_all(self.connection)
+
+    def record_dict_factory(self: object, table_name: str) -> dict:
+        """"""
+        record = {}
+        for col in self.metadata.tables[table_name].columns:
+            default = col.default
+            if isinstance(
+                default, sqlalchemy.sql.schema.ScalarElementColumnDefault
+            ):
+                default = default.arg
+            record[col.name] = default
+        return record
 
     def check_mode(self: object, graph: str, *flags: list) -> bool:
         """Determine if any of the given "mutability mode" flags are
@@ -298,7 +245,7 @@ class _Giraffe:
         for i, vertex in enumerate(vertices):
 
             # fetch a template vertex dictionary
-            vertex_template = vertex_odict_factory()
+            vertex_template = self.record_dict_factory("vertex")
 
             # raise if bad vertex attrs
             if set(vertex) - set(vertex_template):
@@ -404,7 +351,7 @@ class _Giraffe:
         for i, edge in enumerate(edges):
 
             # fetch a template edge dictionary
-            edge_template = edge_odict_factory()
+            edge_template = self.record_dict_factory("edge")
 
             # raise if bad vertex attrs
             if set(edge) - set(edge_template):
@@ -665,6 +612,7 @@ class _Giraffe:
                 continue
             # TODO: merge update-returing above and select below in cte
             # NOTE: how to know if result set indeed has vertex?
+            # extra anonymous column that is either None or 'vertex'?
             # fetch vertices growing off current vertex
             branch_tips = self.connection.execute(
                 self.sql["vdf_search"][2],
