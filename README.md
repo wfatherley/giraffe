@@ -1,3 +1,3 @@
-# `giraffe` -- a database-oriented library for handling graphs
+# `giraffe` -- database-oriented graph tools
 
 <hr>

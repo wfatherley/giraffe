@@ -19,6 +19,8 @@ from itertools import groupby
 
 import sqlalchemy
 
+from .model import metadata as _metadata
+
 # "is immutable" flags
 VEIM = 2  # vertices
 EDIM = 4  # edges
@@ -87,6 +89,9 @@ class _Giraffe:
             **execution_options
         )
 
+        self.metadata = sqlalchemy.MetaData()
+        self.metadata.reflect(bind=self.connection)
+
     def close(self: object) -> None:
         """Close the cursor then close the connection.
 
@@ -97,13 +102,14 @@ class _Giraffe:
     def load_schema(self: object) -> None:
         """Execute the model and commit.
 
-        :return None:"""
-        self.metadata.create_all(self.connection)
+        :return None:
+        """
+        self.metadata.create_all(self.connection, _metadata.tables.values())
 
     def record_dict_factory(self: object, table_name: str) -> dict:
         """"""
         record = {}
-        for col in self.metadata.tables[table_name].columns:
+        for col in _metadata.tables[table_name].columns:
             default = col.default
             if isinstance(
                 default, sqlalchemy.sql.schema.ScalarElementColumnDefault
