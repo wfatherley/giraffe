@@ -74,7 +74,11 @@ class _Giraffe:
     metadata: sqlalchemy.MetaData = None
 
     def __init__(
-        self, engine: object, infinity: int = math.inf, **execution_options
+        self,
+        engine: object,
+        infinity: int = math.inf,
+        eager_commit: bool = False,
+        **execution_options,
     ) -> None:
         """
         :param connection: a PEP-249 compliant database connection
@@ -83,6 +87,7 @@ class _Giraffe:
         """
 
         self.inf = infinity
+        self.eager_commit = eager_commit
 
         # bind connection
         self.connection = engine.connect().execution_options(
@@ -105,6 +110,8 @@ class _Giraffe:
         :return None:
         """
         self.metadata.create_all(self.connection, _metadata.tables.values())
+        if self.eager_commit:
+            self.connection.commit()
 
     def record_dict_factory(self: object, table_name: str) -> dict:
         """"""
@@ -179,6 +186,8 @@ class _Giraffe:
                 "mode": mode,
             },
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def alter_graph(self: object, name: str, **attributes) -> None:
         """Update attributes of a graph with any keyword arguments. Raise
@@ -214,6 +223,8 @@ class _Giraffe:
         self.connection.execute(
             self.sql["alter_graph"][1], {"" + k: record[k] for k in record}
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def delete_graphs(self: object, *names: list[str]) -> None:
         """Delete graphs with the given names.
@@ -225,6 +236,8 @@ class _Giraffe:
         self.connection.execute(
             self.sql["delete_graphs"][0], [{"id": n} for n in names]
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def add_vertices(
         self: object, graph: str, *vertices: list[dict]
@@ -281,6 +294,8 @@ class _Giraffe:
             )
 
         # return the created vertices
+        if self.eager_commit:
+            self.connection.commit()
         return new_ids
 
     def alter_vertex(self: object, vertex_id: str, **attributes) -> None:
@@ -325,6 +340,8 @@ class _Giraffe:
         self.connection.execute(
             self.sql["alter_vertex"][1], {"" + k: record[k] for k in record}
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def delete_vertices(self: object, *ids: list[str]) -> None:
         """Delete vertices with the given ids.
@@ -335,6 +352,8 @@ class _Giraffe:
         self.connection.execute(
             self.sql["delete_vertices"][0], [{"id": i} for i in ids]
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def add_edges(self: object, graph: str, *edges: list[dict]) -> list[int]:
         """Add edges to graph ``graph``. If an edge has a "metadata" key,
@@ -387,6 +406,8 @@ class _Giraffe:
             )
 
         # return the created vertices
+        if self.eager_commit:
+            self.connection.commit()
         return new_ids
 
     def alter_edge(self: object, edge_id: str, **attributes) -> None:
@@ -429,6 +450,8 @@ class _Giraffe:
         self.connection.execute(
             self.sql["alter_edge"][1], {"" + k: record[k] for k in record}
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def delete_edges(self: object, *ids: list[str]) -> None:
         """Delete edges with the given ids.
@@ -439,6 +462,8 @@ class _Giraffe:
         self.connection.execute(
             self.sql["delete_edges"][0], [{"id": i} for i in ids]
         )
+        if self.eager_commit:
+            self.connection.commit()
 
     def create_frucht(self: object, name: str) -> None:
         """Create a directed graph with Frucht vertex-edge structure.
@@ -447,7 +472,9 @@ class _Giraffe:
 
         :return None:"""
         self.create_graph(name, 1)
-        _ = self.add_vertices(name, *[{"metadata": {}} for _ in range(12)])
+        _ = self.add_vertices(
+            name, *[{"metadata": {}} for _ in range(12)]
+        )  # TODO: remove metadata
         _ = self.add_edges(
             name,
             {"parent_vertex_id": _[0], "child_vertex_id": _[10]},
@@ -477,7 +504,9 @@ class _Giraffe:
 
         :return None:"""
         self.create_graph(name, 1, 0)
-        _ = self.add_vertices(name, *[{"metadata": {}} for _ in range(10)])
+        _ = self.add_vertices(
+            name, *[{"metadata": {}} for _ in range(10)]
+        )  # TODO: remove metadata
         _ = self.add_edges(
             name,
             {"parent_vertex_id": _[0], "child_vertex_id": _[1]},
@@ -495,6 +524,20 @@ class _Giraffe:
             {"parent_vertex_id": _[7], "child_vertex_id": _[8]},
             {"parent_vertex_id": _[8], "child_vertex_id": _[9]},
             {"parent_vertex_id": _[9], "child_vertex_id": _[5]},
+        )
+
+    def contract(self, new_vertex: dict, vertex_pair: tuple[int]) -> int:
+        """"""
+        new_vertex_id = self.add_vertices(new_vertex).pop()
+        self.connection.execute(
+            self.sql["contract"][0], {"u": vertex_pair[0], "v": vertex_pair[1]}
+        )
+        self.connection.execute(
+            self.sql["contract"][1],
+            {"u": vertex_pair[0], "v": vertex_pair[1], "x": new_vertex_id},
+        )
+        self.connection.execute(
+            self.sql["contract"][2], {"u": vertex_pair[0], "v": vertex_pair[1]}
         )
 
     def transpose(
@@ -575,6 +618,8 @@ class _Giraffe:
             )
 
         # clean up
+        if self.eager_commit:
+            self.connection.commit()
         return transposed_name
 
     def vdf_search(self: object, graph: str, **hooks: dict) -> None:
@@ -718,10 +763,14 @@ class _Giraffe:
                 if hooks.get("return_early", lambda y, z: False)(
                     graph, self.connection
                 ):
+                    if self.eager_commit:
+                        self.connection.commit()
                     return
 
         # commit changes and exit
         hooks.get("exit", lambda y, z: None)(graph, self.connection)
+        if self.eager_commit:
+            self.connection.commit()
 
     def edf_search(self: object, graph: str, **hooks: dict) -> None:
         """"""
@@ -866,10 +915,14 @@ class _Giraffe:
                 if hooks.get("return_early", lambda y, z: False)(
                     graph, self.connection
                 ):
+                    if self.eager_commit:
+                        self.connection.commit()
                     return
 
         # commit changes and exit
         hooks.get("exit", lambda y, z: None)(graph, self.connection)
+        if self.eager_commit:
+            self.connection.commit()
 
     def find_cycles(self: object, graph: str) -> None:
         """"""
@@ -1078,6 +1131,8 @@ class _Giraffe:
                 {"topological_id": topological_id, "id": vertex[0]},
             )
             topological_id += 1
+        if self.eager_commit:
+            self.connection.commit()
 
     def strongly_connected_components(self: object, graph: str) -> None:
         """"""
@@ -1205,6 +1260,9 @@ class _Giraffe:
                 push(adjacent_obj, obj, graph, self.connection)
             iteration_complete(adjacent_obj, obj, graph, self.connection)
         tixe(graph, self.connection)
+
+        if self.eager_commit:
+            self.connection.commit()
 
     def vbf_search(self: object, graph: str, start_vertex_id: int) -> None:
         """"""

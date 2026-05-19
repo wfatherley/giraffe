@@ -409,6 +409,38 @@ dql_map_raw |= {
 dql_map_raw |= {"delete_edges": ["DELETE FROM edge WHERE id = :id"]}  # 0
 
 dql_map_raw |= {
+    "contract": [
+        "DELETE FROM vertex WHERE id IN (:u, :v)",  # 0
+        """
+        WITH
+            a AS (
+                SELECT id
+                FROM edge
+                WHERE parent_vertex_id = :u
+            ),
+            b AS (
+                SELECT id
+                FROM edge
+                WHERE parent_vertex_id = :v
+            ),
+            c AS (
+                UPDATE edge
+                SET parent_vertex_id = :x
+                WHERE id IN (SELECT id FROM a UNION b)
+            )
+        SELECT COUNT(*) FROM c
+        """,  # 1
+        """
+        DELETE FROM
+            edge
+        WHERE
+            parent_vertex_id IN (:u, :v)
+            AND child_vertex_id IN (:u, :v)
+        """,  # 2
+    ]
+}
+
+dql_map_raw |= {
     "transpose": [
         """
         INSERT INTO graph (id, acyclic, directed, metadata)
